@@ -604,7 +604,7 @@ class Gff3(object):
                                 tag, value = a[0], ''
                             if not tag:
                                 self.add_line_error(line_data, {'message': 'Empty attribute tag: "%s"' % '='.join(a), 'error_type': 'FORMAT', 'location': ''})
-                            if not value:
+                            if not value.strip():
                                 self.add_line_error(line_data, {'message': 'Empty attribute value: "%s"' % '='.join(a), 'error_type': 'FORMAT', 'location': ''}, log_level=logging.WARNING)
                             if tag in line_data['attributes']:
                                 self.add_line_error(line_data, {'message': 'Found multiple attribute tags: "%s"' % tag, 'error_type': 'FORMAT', 'location': ''})
