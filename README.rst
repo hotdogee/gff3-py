@@ -2,8 +2,8 @@
 gff3-py
 ===============================
 
-.. image:: https://badge.fury.io/py/gff3-py.png
-    :target: http://badge.fury.io/py/gff3-py
+.. image:: https://badge.fury.io/py/gff3.png
+    :target: http://badge.fury.io/py/gff3
 
 .. image:: https://travis-ci.org/hotdogee/gff3-py.png?branch=master
         :target: https://travis-ci.org/hotdogee/gff3-py
