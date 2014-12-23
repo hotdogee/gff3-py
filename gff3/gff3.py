@@ -115,6 +115,7 @@ class Gff3(object):
 
     def add_line_error(self, line_data, error_info, log_level=logging.ERROR):
         """Helper function to record and log an error message
+
         :param line_data: dict
         :param error_info: dict
         :param logger:
@@ -160,6 +161,7 @@ class Gff3(object):
     def check_parent_boundary(self):
         """
         checks whether child features are within the coordinate boundaries of parent features
+
         :return:
         """
         for line in self.lines:
@@ -214,11 +216,17 @@ class Gff3(object):
     def check_reference(self, sequence_region=False, fasta_embedded=False, fasta_external=False, check_bounds=True, check_n=True, allowed_num_of_n=0, feature_types=('CDS',)):
         """
         Check seqid, bounds and the number of Ns in each feature using one or more reference sources.
+
         Seqid check: check if the seqid can be found in the reference sources.
+
         Bounds check: check the start and end fields of each features and log error if the values aren't within the seqid sequence length, requires at least one of these sources: ##sequence-region, embedded #FASTA, or external FASTA file.
+
         Ns check: count the number of Ns in each feature with the type specified in *line_types (default: 'CDS') and log an error if the number is greater than allowed_num_of_n (default: 0), requires at least one of these sources: embedded #FASTA, or external FASTA file.
+
         When called with all source parameters set as False (default), check all available sources, and log debug message if unable to perform a check due to none of the reference sources being available.
+
         If any source parameter is set to True, check only those sources marked as True, log error if those sources don't exist.
+
         :param sequence_region: check bounds using the ##sequence-region directive (default: False)
         :param fasta_embedded: check bounds using the embedded fasta specified by the ##FASTA directive (default: False)
         :param fasta_external: check bounds using the external fasta given by the self.parse_fasta_external (default: False)
@@ -333,52 +341,50 @@ class Gff3(object):
 
     def parse(self, gff_file, strict=False):
         """Parse the gff file into the following data structures:
-        * lines(list of line_data(dict)) = {
-            line_index(int): the index in lines
-            line_raw(str)
-            line_type(str in ['feature', 'directive', 'comment', 'blank', 'unknown'])
-            line_errors(list of str): a list of error messages
-            line_status(str in ['normal', 'modified', 'removed'])
-            parents(list of feature(list of line_data(dict))): may have multiple parents
-            children(list of line_data(dict))
-            extra fields depending on line_type
+
+        * lines(list of line_data(dict))
+            - line_index(int): the index in lines
+            - line_raw(str)
+            - line_type(str in ['feature', 'directive', 'comment', 'blank', 'unknown'])
+            - line_errors(list of str): a list of error messages
+            - line_status(str in ['normal', 'modified', 'removed'])
+            - parents(list of feature(list of line_data(dict))): may have multiple parents
+            - children(list of line_data(dict))
+            - extra fields depending on line_type
             * directive
-                directive(str in ['##gff-version', '##sequence-region', '##feature-ontology', '##attribute-ontology', '##source-ontology', '##species', '##genome-build', '###', '##FASTA'])
-                extra fields depending on directive
+                - directive(str in ['##gff-version', '##sequence-region', '##feature-ontology', '##attribute-ontology', '##source-ontology', '##species', '##genome-build', '###', '##FASTA'])
+                - extra fields depending on directive
             * feature
-                seqid(str): must escape any characters not in the set [a-zA-Z0-9.:^*$@!+_?-|] using RFC 3986 Percent-Encoding
-                source(str)
-                type(str in so_types)
-                start(int)
-                end(int)
-                score(float)
-                strand(str in ['+', '-', '.', '?'])
-                phase(int in [0, 1, 2])
-                attributes(dict of tag(str) to value) = {
-                    ID(str)
-                    Name(str)
-                    Alias(list of str): multi value
-                    Parent(list of str): multi value
-                    Target(dict) = {
-                        target_id(str)
-                        start(int)
-                        end(int)
-                        strand(str in ['+', '-', ''])
-                    }
-                    Gap(str): CIGAR format
-                    Derives_from(str)
-                    Note(list of str): multi value
-                    Dbxref(list of str): multi value
-                    Ontology_term(list of str): multi value
-                    Is_circular(str in ['true'])
-                }
-            * fasta_dict(dict of id(str) to sequence_item(dict)) = {
-                id(str)
-                header(str)
-                seq(str)
-                line_length(int)
-            }
-        }
+                - seqid(str): must escape any characters not in the set [a-zA-Z0-9.:^*$@!+_?-|] using RFC 3986 Percent-Encoding
+                - source(str)
+                - type(str in so_types)
+                - start(int)
+                - end(int)
+                - score(float)
+                - strand(str in ['+', '-', '.', '?'])
+                - phase(int in [0, 1, 2])
+                - attributes(dict of tag(str) to value)
+                    - ID(str)
+                    - Name(str)
+                    - Alias(list of str): multi value
+                    - Parent(list of str): multi value
+                    - Target(dict)
+                        - target_id(str)
+                        - start(int)
+                        - end(int)
+                        - strand(str in ['+', '-', ''])
+                    - Gap(str): CIGAR format
+                    - Derives_from(str)
+                    - Note(list of str): multi value
+                    - Dbxref(list of str): multi value
+                    - Ontology_term(list of str): multi value
+                    - Is_circular(str in ['true'])
+            * fasta_dict(dict of id(str) to sequence_item(dict))
+                - id(str)
+                - header(str)
+                - seq(str)
+                - line_length(int)
+
         * features(dict of feature_id(str in line_data['attributes']['ID']) to feature(list of line_data(dict)))
 
         A feature is a list of line_data(dict), since all lines that share an ID collectively represent a single feature.
@@ -759,6 +765,7 @@ class Gff3(object):
     def ancestors(self, line_data):
         """
         BFS graph algorithm
+
         :param line_data: line_data(dict) with line_data['line_index'] or line_index(int)
         :return: list of line_data(dict)
         """
@@ -779,6 +786,7 @@ class Gff3(object):
     def adopt(self, old_parent, new_parent):
         """
         Transfer children from old_parent to new_parent
+
         :param old_parent: feature_id(str) or line_index(int) or line_data(dict) or feature
         :param new_parent: feature_id(str) or line_index(int) or line_data(dict)
         :return: List of children transferred
@@ -830,6 +838,7 @@ class Gff3(object):
     def adopted(self, old_child, new_child):
         """
         Transfer parents from old_child to new_child
+
         :param old_child: line_data(dict) with line_data['line_index'] or line_index(int)
         :param new_child: line_data(dict) with line_data['line_index'] or line_index(int)
         :return: List of parents transferred
@@ -845,6 +854,7 @@ class Gff3(object):
         """
         Remove all features associated with line_data. Find the root parent of line_data of type root_type, remove all of its descendants.
         If the root parent has a parent with no children after the remove, remove the root parent's parent recursively.
+
         :param line_data:
         :param root_type:
         :return:
