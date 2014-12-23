@@ -4,8 +4,8 @@ Usage
 
 To use gff3-py in a project::
 
-    import gff3
+    from gff3 import Gff3
 
     
-.. automodule:: gff3.gff3
+.. autoclass:: gff3.Gff3
    :members:
