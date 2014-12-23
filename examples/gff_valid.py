@@ -7,7 +7,7 @@
 # (at your option) any later version.
 
 """
-Check a GFF3 file for errors and unwanted features, with an option to correct the errors and output a valid GFF3 file.
+Check a GFF3 file for errors and output a validation report in markdown
 
 Count the number of Ns in each feature, remove features with N count greater than the specified threshold. (Requires FASTA)
 Check and remove features with an end coordinates larger than the landmark sequence length. (Requires FASTA or ##sequence-region)
@@ -18,17 +18,22 @@ Check and correct the phase for CDS features.
 Changelog:
 """
 
-__version__ = '1.0'
-
-from gff3 import Gff3
+import sys
+import re
+import logging
 from collections import OrderedDict
 from collections import defaultdict
 from itertools import groupby
 from urllib import quote, unquote
 from textwrap import wrap
-import sys
-import re
-import logging
+try: # import from site-packages
+    from gff3 import Gff3
+except ImportError: # import from project
+    from os.path import abspath
+    sys.path.append(abspath('..'))
+    from gff3 import Gff3
+
+__version__ = '1.0'
 
 
 def query_yes_no(question, default='yes'):
@@ -133,6 +138,8 @@ if __name__ == '__main__':
     logger_stderr.info('Checking parent boundaries...')
     gff3.check_parent_boundary()
 
+    gff3.check_phase()
+
     if args.report_file:
         logger_stderr.info('Writing validation report (%s)...', args.report_file)
         report_fh = open(args.report_file, 'wb')
@@ -141,26 +148,28 @@ if __name__ == '__main__':
 
     # Validation Summary
     report_fh.write('# GFF3 Validation Report')
-    if args.gff_file:
+    if args.gff_file and sys.stdin.isatty():
         report_fh.write(': {0:s}'.format(args.gff_file))
     report_fh.write('\n\n')
 
     report_fh.write('# Validation Summary\n')
     error_lines = [line for line in gff3.lines if line['line_errors']]
-    error_list = [error for line in error_lines for error in line['line_errors']]
-    error_types = sorted(list(set([error['error_type'] for error in error_list])))
-    for error_type in error_types:
-        report_fh.write('* Found {0:d} {1:s} errors in {2:d} lines\n'.format(
-            len([error for error in error_list if error['error_type'] == error_type]), error_type,
-            len([line for line in error_lines if [error for error in line['line_errors'] if error['error_type'] == error_type]])))
+    if len(error_lines) == 0:
+        report_fh.write('* Found 0 errors\n')
+    else:
+        error_list = [error for line in error_lines for error in line['line_errors']]
+        error_types = sorted(list(set([error['error_type'] for error in error_list])))
+        for error_type in error_types:
+            report_fh.write('* Found {0:d} {1:s} errors in {2:d} lines\n'.format(
+                len([error for error in error_list if error['error_type'] == error_type]), error_type,
+                len([line for line in error_lines if [error for error in line['line_errors'] if error['error_type'] == error_type]])))
 
-    report_fh.write('\n')
-    report_fh.write('# Detected Errors\n')
-    for line in error_lines:
-        report_fh.write('* Line {0:d}: {1:s}\n'.format(line['line_index'] + 1, line['line_raw'].strip()))
-        for error in line['line_errors']:
-            report_fh.write('\t- {error_type}: {message}\n'.format(error_type=error['error_type'], message=error['message']))
-
+        report_fh.write('\n')
+        report_fh.write('# Detected Errors\n')
+        for line in error_lines:
+            report_fh.write('* Line {0:d}: {1:s}\n'.format(line['line_index'] + 1, line['line_raw'].strip()))
+            for error in line['line_errors']:
+                report_fh.write('\t- {error_type}: {message}\n'.format(error_type=error['error_type'], message=error['message']))
 
     if args.report_file:
         report_fh.close()
