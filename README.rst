@@ -58,7 +58,7 @@ using an external FASTA file named ``annotations.fa`` looks like:
     gff.check_phase()
     
 A more feature complete GFF3 validator with a command line interface and produces a validation 
-report in MarkDown format is available under examples/gff_valid.py
+report in MarkDown format is available under ``examples/gff_valid.py``
 
 The following example demonstrates how to filter, tranverse, and modify the parsed gff3 data structure.
 1. Change features with type ``exon`` to ``pseudogenic_exon`` and type ``transcript`` to 
