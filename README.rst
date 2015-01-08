@@ -20,13 +20,13 @@ Manipulate genomic features and validate the syntax and reference sequence of yo
 Features
 --------
 
-* Parses a GFF3 file into a structure composed of simple python dict and list.
-* Validates the GFF3 syntax on parse, and saves the error messages in the parsed structure.
-* Uses the python logging library to log error messages with support for custom loggers.
-* Parses embeded or external FASTA sequences to check bounds and number of Ns.
-* Check and correct the phase for CDS features.
-* Tree traversal methods `ancestors` and `descendants` returns a simple list in Breadth-first search order.
-* Transfer children and parents using the `adopt` and `adopted` methods.
-* Test for overlapping features using the `overlap` method.
-* Remove a feature and its associated features using the `remove` method.
-* Write the modified structure to a GFF3 file using the `write` mthod.
+* Parses a ``GFF3`` file into a structure composed of simple python ``dict`` and ``list``.
+* Validates the ``GFF3`` syntax on parse, and saves the error messages in the parsed structure.
+* Uses the python ``logging`` library to log error messages with support for custom loggers.
+* Parses embeded or external ``FASTA`` sequences to check bounds and number of ``N``s.
+* Check and correct the phase for ``CDS`` features.
+* Tree traversal methods ``ancestors`` and ``descendants`` returns a simple ``list`` in Breadth-first search order.
+* Transfer children and parents using the ``adopt`` and ``adopted`` methods.
+* Test for overlapping features using the ``overlap`` method.
+* Remove a feature and its associated features using the ``remove`` method.
+* Write the modified structure to a GFF3 file using the ``write`` mthod.
