@@ -31,6 +31,63 @@ Features
 * Remove a feature and its associated features using the ``remove`` method.
 * Write the modified structure to a GFF3 file using the ``write`` mthod.
 
+Quick Start
+-----------
+
+An example that just parses a GFF3 file named ``annotations.gff`` and validates it 
+using an external FASTA file named ``annotations.fa`` looks like:
+
+.. code:: python
+
+    # validate.py
+    # ============
+    from gff3 import Gff3
+
+    # initialize a Gff3 object
+    gff = Gff3()
+    # parse GFF3 file and do syntax checking, this populates gff.lines and gff.features
+    # if an embedded ##FASTA directive is found, parse the sequences into gff.fasta_embedded
+    gff.parse('annotations.gff')
+    # parse the external FASTA file into gff.fasta_external
+    gff.parse_fasta_external('annotations.fa')
+    # Check seqid, bounds and the number of Ns in each feature using one or more reference sources
+    gff.check_reference(allowed_num_of_n=0, feature_types=['CDS'])
+    # Checks whether child features are within the coordinate boundaries of parent features
+    gff.check_parent_boundary()
+    # Calculates the correct phase and checks if it matches the given phase for CDS features
+    gff.check_phase()
+    
+A more feature complete GFF3 validator with a command line interface and produces a validation 
+report in MarkDown format is available under examples/gff_valid.py
+
+The following example demonstrates how to filter, tranverse, and modify the parsed gff3 data structure.
+1. Change features with type ``exon`` to ``pseudogenic_exon`` and type ``transcript`` to 
+   ``pseudogenic_transcript`` if the feature has an ancestor of type ``pseudogene``
+2. If a ``pseudogene`` feature overlaps with a ``gene`` feature, move all of the children 
+   from the ``pseudogene`` feature to the ``gene`` feature, and remove the ``pseudogene`` feature.
+
+.. code:: python
+
+    # fix_pseudogene.py
+    # =================
+    from gff3 import Gff3
+    gff = Gff3('annotations.gff')
+    type_map = {'exon': 'pseudogenic_exon', 'transcript': 'pseudogenic_transcript'}
+    pseudogenes = [line for line in gff.lines if line['line_type'] == 'feature' and line['type'] == 'pseudogene']
+    for pseudogene in pseudogenes:
+        # convert types
+        for line in gff.descendants(pseudogene):
+            if line['type'] in type_map:
+                line['type'] = type_map[line['type']]
+        # find overlapping gene
+        overlapping_genes = [line for line in gff.lines if line['line_type'] == 'feature' and line['type'] == 'gene' and gff.overlap(line, pseudogene)]
+        if overlapping_genes:
+            # move pseudogene children to overlapping gene
+            gff.adopt(pseudogene, overlapping_genes[0])
+            # remove pseudogene
+            gff.remove(pseudogene)
+    gff.write('annotations_fixed.gff')
+
 .. |GFF3| replace:: ``GFF3``
 .. |dict| replace:: ``dict``
 .. |list| replace:: ``list``

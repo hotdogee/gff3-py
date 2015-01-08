@@ -429,9 +429,10 @@ class Gff3(object):
                 'line_status': 'normal',
                 'parents': [],
                 'children': [],
-                'line_type': None,
-                'directive': None,
+                'line_type': '',
+                'directive': '',
                 'line_errors': [],
+                'type': '',
             }
             line_strip = line_raw.strip()
             if line_strip != line_raw[:len(line_strip)]:
