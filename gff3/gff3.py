@@ -16,7 +16,7 @@ Changelog:
 
 __version__ = '0.1'
 
-from collections import OrderedDict
+#from collections import OrderedDict # not available in 2.6
 from collections import defaultdict
 from itertools import groupby
 from urllib import quote, unquote
@@ -49,7 +49,8 @@ def fasta_file_to_dict(fasta_file, id=True, header=False, seq=False):
         fasta_file_f = open(fasta_file, 'rb')
 
     fasta_dict = dict()
-    flags = OrderedDict([('id', id), ('header', header), ('seq', seq)])
+    keys = ['id', 'header', 'seq']
+    flags = dict([('id', id), ('header', header), ('seq', seq)])
     entry = dict([('id', ''), ('header', ''), ('seq', '')])
     count = 0
     line_num = 0
@@ -58,17 +59,17 @@ def fasta_file_to_dict(fasta_file, id=True, header=False, seq=False):
         line = line.strip()
         if line and line[0] == '>':
             count += 1
-            key = '||'.join([entry[i] for i in flags if flags[i]])
+            key = '||'.join([entry[i] for i in keys if flags[i]])
             if key: # key != ''
                 if key in fasta_dict: # check for duplicate key
-                    logger.warning('%s : Line %d : Duplicate %s [%s] : ID = [%s].', fasta_file_f.name, line_num, '||'.join([i for i in flags if flags[i]]), key[:25] + (key[25:] and '..'), entry['id'])
+                    logger.warning('%s : Line %d : Duplicate %s [%s] : ID = [%s].', fasta_file_f.name, line_num, '||'.join([i for i in keys if flags[i]]), key[:25] + (key[25:] and '..'), entry['id'])
                 entry['seq'] = ''.join(entry['seq'])
                 fasta_dict[key] = entry
                 # check for url escaped id
                 if id:
                     unescaped_id = unquote(entry['id'])
                     if id != unescaped_id:
-                        key = '||'.join([unescaped_id] + [entry[i] for i in flags if i != 'id' and flags[i]])
+                        key = '||'.join([unescaped_id] + [entry[i] for i in keys if i != 'id' and flags[i]])
                         entry['unescaped_id'] = unescaped_id
                         fasta_dict[key] = entry
                 entry = dict()
@@ -82,17 +83,17 @@ def fasta_file_to_dict(fasta_file, id=True, header=False, seq=False):
     if isinstance(fasta_file, str):
         fasta_file_f.close()
 
-    key = '||'.join([entry[i] for i in flags if flags[i]])
+    key = '||'.join([entry[i] for i in keys if flags[i]])
     if key: # key != ''
         if key in fasta_dict:
-            logger.warning('%s : Line %d : Duplicate %s [%s] : ID = [%s].', fasta_file_f.name, line_num, '||'.join([i for i in flags if flags[i]]), key[:25] + (key[25:] and '..'), entry['id'])
+            logger.warning('%s : Line %d : Duplicate %s [%s] : ID = [%s].', fasta_file_f.name, line_num, '||'.join([i for i in keys if flags[i]]), key[:25] + (key[25:] and '..'), entry['id'])
         entry['seq'] = ''.join(entry['seq'])
         fasta_dict[key] = entry
         # check for url escaped id
         if id:
             unescaped_id = unquote(entry['id'])
             if id != unescaped_id:
-                key = '||'.join([unescaped_id] + [entry[i] for i in flags if i != 'id' and flags[i]])
+                key = '||'.join([unescaped_id] + [entry[i] for i in keys if i != 'id' and flags[i]])
                 entry['unescaped_id'] = unescaped_id
                 fasta_dict[key] = entry
 
@@ -258,7 +259,7 @@ class Gff3(object):
         checked_at_least_one_source = False
         # check directive
         # don't use any directives with errors
-        valid_sequence_regions = {unquote(line_data['seqid']): line_data for line_data in self.lines if line_data['directive'] == '##sequence-region' and not line_data['line_errors']}
+        valid_sequence_regions = dict([(unquote(line_data['seqid']), line_data) for line_data in self.lines if line_data['directive'] == '##sequence-region' and not line_data['line_errors']])
         unresolved_seqid = set()
         if (check_all_sources or sequence_region) and valid_sequence_regions:
             checked_at_least_one_source = True
