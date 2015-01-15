@@ -61,8 +61,7 @@ A more feature complete GFF3 validator with a command line interface which also 
 report in MarkDown is available under ``examples/gff_valid.py``
 
 The following example demonstrates how to filter, tranverse, and modify the parsed gff3 data structure.
-1. Change features with type ``exon`` to ``pseudogenic_exon`` and type ``transcript`` to 
-   ``pseudogenic_transcript`` if the feature has an ancestor of type ``pseudogene``
+1. Change features with type ``exon`` to ``pseudogenic_exon`` and type ``transcript`` to ``pseudogenic_transcript`` if the feature has an ancestor of type ``pseudogene``
 2. If a ``pseudogene`` feature overlaps with a ``gene`` feature, move all of the children 
    from the ``pseudogene`` feature to the ``gene`` feature, and remove the ``pseudogene`` feature.
 
