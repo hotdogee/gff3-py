@@ -253,7 +253,7 @@ class Gff3(object):
         if sequence_region or fasta_embedded or fasta_external:
             check_all_sources = False
         # get a list of line_data with valid start and end coordinates and unescape the seqid
-        start_end_error_locations = {'start', 'end', 'start,end'}
+        start_end_error_locations = set(('start', 'end', 'start,end'))
         valid_line_data_seqid = [(line_data, unquote(line_data['seqid'])) for line_data in self.lines if line_data['line_type'] == 'feature' and line_data['seqid'] != '.' and (not line_data['line_errors'] or not [error_info for error_info in line_data['line_errors'] if 'location' in error_info and error_info['location'] in start_end_error_locations])]
         checked_at_least_one_source = False
         # check directive
@@ -394,11 +394,11 @@ class Gff3(object):
         :param gff_file: a string path or file object
         :param strict: when true, throw exception on syntax and format errors. when false, use best effort to finish parsing while logging errors
         """
-        valid_strand = {'+', '-', '.', '?'}
-        valid_phase = {0, 1, 2}
-        multi_value_attributes = {'Parent', 'Alias', 'Note', 'Dbxref', 'Ontology_term'}
-        valid_attribute_target_strand = {'+', '-', ''}
-        reserved_attributes = {'ID', 'Name', 'Alias', 'Parent', 'Target', 'Gap', 'Derives_from', 'Note', 'Dbxref', 'Ontology_term', 'Is_circular'}
+        valid_strand = set(('+', '-', '.', '?'))
+        valid_phase = set((0, 1, 2))
+        multi_value_attributes = set(('Parent', 'Alias', 'Note', 'Dbxref', 'Ontology_term'))
+        valid_attribute_target_strand = set(('+', '-', ''))
+        reserved_attributes = set(('ID', 'Name', 'Alias', 'Parent', 'Target', 'Gap', 'Derives_from', 'Note', 'Dbxref', 'Ontology_term', 'Is_circular'))
 
         # illegal character check
         # Literal use of tab, newline, carriage return, the percent (%) sign, and control characters must be encoded using RFC 3986 Percent-Encoding; no other characters may be encoded.
