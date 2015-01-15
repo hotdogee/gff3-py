@@ -13,13 +13,17 @@ Check and correct the phase for CDS features.
 
 Changelog:
 """
+from __future__ import print_function
 
 __version__ = '0.1'
 
 #from collections import OrderedDict # not available in 2.6
 from collections import defaultdict
 from itertools import groupby
-from urllib import quote, unquote
+try:
+    from urllib import quote, unquote
+except ImportError:
+    from urllib.parse import quote, unquote
 from textwrap import wrap
 import sys
 import re
@@ -663,9 +667,6 @@ class Gff3(object):
                                 if tag != 'Note' and len(line_data['attributes'][tag]) != len(set(line_data['attributes'][tag])):
                                     count_values = [(len(list(group)), key) for key, group in groupby(sorted(line_data['attributes'][tag]))]
                                     self.add_line_error(line_data, {'message': '%s attribute has identical values (count, value): %s' % (tag, ', '.join(['(%d, %s)' % (c, v) for c, v in count_values if c > 1])), 'error_type': 'FORMAT', 'location': ''})
-                                    if ', '.join(['(%d, %s)' % (c, v) for c, v in count_values if c > 1]) == '':
-                                        print ', '.join(['(%d, %s)' % (c, v) for c, v in count_values])
-                                        print line_data['attributes'][tag]
                                     # remove duplicate
                                     line_data['attributes'][tag] = list(set(line_data['attributes'][tag]))
 
@@ -831,12 +832,6 @@ class Gff3(object):
             old_ld['children'] = []
         return children
 
-    def test(self):
-        from gff3 import Gff3
-        gff = Gff3('annotations.gff')
-        a = gff.ancestors(4)
-        for b in a: print b['line_raw'].strip()
-
     def adopted(self, old_child, new_child):
         """
         Transfer parents from old_child to new_child
@@ -978,7 +973,7 @@ class Gff3(object):
                     if child_type not in node_dict:
                         node_dict[child_type] = node(child_type)
                     if parent_type == child_type and child_type == 'mRNA':
-                        print line_data['line_index'], child_ld['line_index']
+                        print(line_data['line_index'], child_ld['line_index'])
                     else:
                         node_dict[parent_type].children.add(node_dict[child_type])
         return sorted(list(root_set), key=lambda x: x.value)
