@@ -60,7 +60,7 @@ using an external FASTA file named ``annotations.fa`` looks like:
 A more feature complete GFF3 validator with a command line interface which also generates validation
 report in MarkDown is available under ``examples/gff_valid.py``
 
-The following example demonstrates how to filter, tranverse, and modify the parsed gff3 data structure.
+The following example demonstrates how to filter, tranverse, and modify the parsed gff3 ``lines`` list.
 
 1. Change features with type ``exon`` to ``pseudogenic_exon`` and type ``transcript`` to ``pseudogenic_transcript`` if the feature has an ancestor of type ``pseudogene``
 
