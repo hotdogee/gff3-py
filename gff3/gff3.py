@@ -15,8 +15,6 @@ Changelog:
 """
 from __future__ import print_function
 
-__version__ = '0.1'
-
 #from collections import OrderedDict # not available in 2.6
 from collections import defaultdict
 from itertools import groupby
@@ -634,10 +632,10 @@ class Gff3(object):
                     # All attributes that begin with an uppercase letter are reserved for later use. Attributes that begin with a lowercase letter can be used freely by applications.
                     if unescaped_field(tokens[8]):
                         self.add_line_error(line_data, {'message': 'Attributes must escape the percent (%) sign and any control characters', 'error_type': 'FORMAT', 'location': ''})
-                    attribute_tokens = tuple(tuple(t for t in a.split('=')) for a in tokens[8].split(';'))
+                    attribute_tokens = tuple(tuple(t for t in a.split('=')) for a in tokens[8].split(';') if a)
                     line_data['attributes'] = {}
                     if len(attribute_tokens) == 1 and len(attribute_tokens[0]) == 1 and attribute_tokens[0][0] == '.':
-                        pass
+                        pass # no attributes
                     else:
                         for a in attribute_tokens:
                             if len(a) != 2:
