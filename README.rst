@@ -23,7 +23,7 @@ Features
 * Parses a |GFF3|_ file into a structure composed of simple python |dict|_ and |list|_.
 * Validates the |GFF3|_ syntax on parse, and saves the error messages in the parsed structure.
 * Uses the python |logging|_ library to log error messages with support for custom loggers.
-* Parses embeded or external |FASTA|_ sequences to check bounds and number of ``N``s.
+* Parses embeded or external |FASTA|_ sequences to check bounds and number of ``N`` s.
 * Check and correct the phase for ``CDS`` features.
 * Tree traversal methods ``ancestors`` and ``descendants`` returns a simple ``list`` in Breadth-first search order.
 * Transfer children and parents using the ``adopt`` and ``adopted`` methods.
