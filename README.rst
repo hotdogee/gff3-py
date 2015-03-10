@@ -20,8 +20,9 @@ Manipulate genomic features and validate the syntax and reference sequence of yo
 Features
 --------
 
-* Parses a |GFF3|_ file into a structure composed of simple python |dict|_ and |list|_.
-* Validates the |GFF3|_ syntax on parse, and saves the error messages in the parsed structure.
+* **Simple data structures**: Parses a |GFF3|_ file into a structure composed of simple python |dict|_ and |list|_.
+* **Validation**: Validates the |GFF3|_ syntax on parse, and saves the error messages in the parsed structure.
+* **Best effort parsing**: Despite any detected errors, continue to parse the whole file and make as much sense to it as possible.
 * Uses the python |logging|_ library to log error messages with support for custom loggers.
 * Parses embeded or external |FASTA|_ sequences to check bounds and number of ``N`` s.
 * Check and correct the phase for ``CDS`` features.
