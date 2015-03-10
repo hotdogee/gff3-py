@@ -211,7 +211,7 @@ class Gff3(object):
             for line in sorted_cds_list:
                 if line['phase'] != phase:
                     self.add_line_error(line, {'message': 'Wrong phase {0:d}, should be {1:d}'.format(line['phase'], phase), 'error_type': 'PHASE'})
-                phase = (3 - ((phase + line['end'] - line['start'] + 1) % 3)) % 3
+                phase = (3 - ((line['end'] - line['start'] + 1 - phase) % 3)) % 3
 
     def parse_fasta_external(self, fasta_file):
         self.fasta_external, count = fasta_file_to_dict(fasta_file)
