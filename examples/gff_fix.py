@@ -19,12 +19,6 @@ Changelog:
 """
 
 import sys
-try:
-    from gff3 import Gff3
-except ImportError:
-    from os.path import abspath
-    sys.path.append(abspath('..'))
-    from gff3 import Gff3
 from collections import OrderedDict
 from collections import defaultdict
 from itertools import groupby
@@ -32,6 +26,10 @@ from urllib import quote, unquote
 from textwrap import wrap
 import re
 import logging
+# try to import from project first
+from os.path import dirname
+sys.path.insert(1, dirname(dirname(__file__)))
+from gff3 import Gff3
 
 __version__ = '1.0'
 

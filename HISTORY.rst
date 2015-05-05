@@ -3,6 +3,13 @@
 History
 -------
 
+0.4.0 (2015-05-05)
+---------------------
+
+* Added helper functions: complement(seq) and translate(seq)
+* Gff.write no longer prints redundent '###' when the whole gene is marked as removed
+
+
 0.3.0 (2015-03-10)
 ---------------------
 

@@ -1,10 +1,8 @@
 import sys
-try:
-    from gff3 import Gff3
-except ImportError:
-    from os.path import abspath
-    sys.path.append(abspath('..'))
-    from gff3 import Gff3
+# try to import from project first
+from os.path import dirname
+sys.path.insert(1, dirname(dirname(__file__)))
+from gff3 import Gff3
 
 gff = Gff3('annotations.gff')
 type_map = {'exon': 'pseudogenic_exon', 'transcript': 'pseudogenic_transcript'}

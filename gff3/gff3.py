@@ -10,8 +10,6 @@ Check and remove features with an end coordinates larger than the landmark seque
 Check if the ##sequence-region matches the FASTA file. (Requires FASTA and ##sequence-region)
 Add the ##sequence-region directives if missing. (Requires FASTA)
 Check and correct the phase for CDS features.
-
-Changelog:
 """
 from __future__ import print_function
 
@@ -25,6 +23,7 @@ except ImportError:
 from textwrap import wrap
 import sys
 import re
+import string
 import logging
 logger = logging.getLogger(__name__)
 #log.basicConfig(level=logging.DEBUG, format='%(levelname)-8s %(message)s')
@@ -34,6 +33,24 @@ if not logger.handlers:
     lh.setFormatter(logging.Formatter('%(levelname)-8s %(message)s'))
     logger.addHandler(lh)
 
+COMPLEMENT_TRANS = string.maketrans('TAGCtagc', 'ATCGATCG')
+def complement(seq):
+    return seq.translate(COMPLEMENT_TRANS)
+    
+BASES = ['t', 'c', 'a', 'g']
+CODONS = [a+b+c for a in BASES for b in BASES for c in BASES]
+AMINO_ACIDS = 'FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG'
+CODON_TABLE = dict(zip(CODONS, AMINO_ACIDS))
+def translate(seq):
+    seq = seq.lower().replace('\n', '').replace(' ', '')
+    peptide = ''
+    for i in xrange(0, len(seq), 3):
+        codon = seq[i: i+3]
+        amino_acid = CODON_TABLE.get(codon, '!')
+        if amino_acid != '!': # end of seq
+            peptide += amino_acid
+    return peptide
+    
 def fasta_file_to_dict(fasta_file, id=True, header=False, seq=False):
     """Returns a dict from a fasta file and the number of sequences as the second return value.
     fasta_file can be a string path or a file object.
@@ -100,6 +117,8 @@ def fasta_file_to_dict(fasta_file, id=True, header=False, seq=False):
                 fasta_dict[key] = entry
 
     return fasta_dict, count
+
+
 
 class Gff3(object):
     def __init__(self, gff_file=None, fasta_external=None, logger=logger):
@@ -847,7 +866,9 @@ class Gff3(object):
 
     def remove(self, line_data, root_type=None):
         """
-        Remove all features associated with line_data. Find the root parent of line_data of type root_type, remove all of its descendants.
+        Marks line_data and all of its associated feature's 'line_status' as 'removed', does not actually remove the line_data from the data structure.
+        The write function checks the 'line_status' when writing the gff file.
+        Find the root parent of line_data of type root_type, remove all of its descendants.
         If the root parent has a parent with no children after the remove, remove the root parent's parent recursively.
 
         :param line_data:
@@ -914,6 +935,7 @@ class Gff3(object):
         root_lines = [line_data for line_data in self.lines if line_data['line_type'] == 'feature' and not line_data['parents']]
 
         for root_line in root_lines:
+            lines_wrote = len(wrote_lines)
             if root_line['line_index'] in wrote_lines:
                 continue
             # write #sequence-region if new seqid
@@ -932,9 +954,11 @@ class Gff3(object):
                 if descendant['line_index'] in wrote_lines:
                     continue
                 write_feature(descendant)
-            gff_fp.write('###\n')
+            # check if we actually wrote something
+            if lines_wrote != len(wrote_lines):
+                gff_fp.write('###\n')
         # write fasta
-        fasta = embed_fasta or self.fasta_external or self.fasta_embedded
+        fasta = self.fasta_external or self.fasta_embedded
         if fasta and embed_fasta != False:
             gff_fp.write('##FASTA\n')
             for seqid in sorted(fasta.keys()):
