@@ -6,7 +6,9 @@ History
 0.4.0 (2015-05-05)
 ---------------------
 
-* Added helper functions: complement(seq) and translate(seq)
+* Added sequence functions: complement(seq) and translate(seq)
+* Added fasta write function: fasta_dict_to_file(fasta_dict, fasta_file, line_char_limit=None)
+* Added Gff method to return the sequence of line_data: sequence(self, line_data, child_type=None, reference=None)
 * Gff.write no longer prints redundent '###' when the whole gene is marked as removed
 
 
