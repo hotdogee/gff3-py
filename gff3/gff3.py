@@ -33,10 +33,13 @@ if not logger.handlers:
     lh.setFormatter(logging.Formatter('%(levelname)-8s %(message)s'))
     logger.addHandler(lh)
 
-COMPLEMENT_TRANS = string.maketrans('TAGCtagc', 'ATCGATCG')
+try:
+    COMPLEMENT_TRANS = string.maketrans('TAGCtagc', 'ATCGATCG')
+except AttributeError:
+    COMPLEMENT_TRANS = str.maketrans('TAGCtagc', 'ATCGATCG')
 def complement(seq):
     return seq.translate(COMPLEMENT_TRANS)
-    
+
 BASES = ['t', 'c', 'a', 'g']
 CODONS = [a+b+c for a in BASES for b in BASES for c in BASES]
 AMINO_ACIDS = 'FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG'
@@ -50,7 +53,7 @@ def translate(seq):
         if amino_acid != '!': # end of seq
             peptide += amino_acid
     return peptide
-    
+
 def fasta_file_to_dict(fasta_file, id=True, header=False, seq=False):
     """Returns a dict from a fasta file and the number of sequences as the second return value.
     fasta_file can be a string path or a file object.
@@ -453,14 +456,14 @@ class Gff3(object):
 
         gff_fp = gff_file
         if isinstance(gff_file, str):
-            gff_fp = open(gff_file, 'rb')
-            
+            gff_fp = open(gff_file, 'r')
+
         lines = []
         current_line_num = 1 # line numbers start at 1
         features = defaultdict(list)
         # key = the unresolved id, value = a list of line_data(dict)
         unresolved_parents = defaultdict(list)
-        
+
         for line_raw in gff_fp:
             line_data = {
                 'line_index': current_line_num - 1,
@@ -489,7 +492,7 @@ class Gff3(object):
                     # only one ##sequence-region directive may be given for any given seqid
                     # all features on that landmark feature (having that seqid) must be contained within the range defined by that ##sequence-region diretive. An exception to this rule is allowed when a landmark feature is marked with the Is_circular attribute.
                     line_data['directive'] = '##sequence-region'
-                    tokens = line_strip.split()[1:]
+                    tokens = list(line_strip.split()[1:])
                     if len(tokens) != 3:
                         self.add_line_error(line_data, {'message': 'Expecting 3 fields, got %d: %s' % (len(tokens) - 1, repr(tokens[1:])), 'error_type': 'FORMAT', 'location': ''})
                     if len(tokens) > 0:
@@ -526,7 +529,7 @@ class Gff3(object):
                     # check if it appeared before
                     if [True for d in lines if ('directive' in d and d['directive'] == '##gff-version')]:
                         self.add_line_error(line_data, {'message': '##gff-version missing from the first line', 'error_type': 'FORMAT', 'location': ''})
-                    tokens = line_strip.split()[1:]
+                    tokens = list(line_strip.split()[1:])
                     if len(tokens) != 1:
                         self.add_line_error(line_data, {'message': 'Expecting 1 field, got %d: %s' % (len(tokens) - 1, repr(tokens[1:])), 'error_type': 'FORMAT', 'location': ''})
                     if len(tokens) > 0:
@@ -551,7 +554,7 @@ class Gff3(object):
                     # ##feature-ontology URI
                     # This directive indicates that the GFF3 file uses the ontology of feature types located at the indicated URI or URL.
                     line_data['directive'] = '##feature-ontology'
-                    tokens = line_strip.split()[1:]
+                    tokens = list(line_strip.split()[1:])
                     if len(tokens) != 1:
                         self.add_line_error(line_data, {'message': 'Expecting 1 field, got %d: %s' % (len(tokens) - 1, repr(tokens[1:])), 'error_type': 'FORMAT', 'location': ''})
                     if len(tokens) > 0:
@@ -560,7 +563,7 @@ class Gff3(object):
                     # ##attribute-ontology URI
                     # This directive indicates that the GFF3 uses the ontology of attribute names located at the indicated URI or URL.
                     line_data['directive'] = '##attribute-ontology'
-                    tokens = line_strip.split()[1:]
+                    tokens = list(line_strip.split()[1:])
                     if len(tokens) != 1:
                         self.add_line_error(line_data, {'message': 'Expecting 1 field, got %d: %s' % (len(tokens) - 1, repr(tokens[1:])), 'error_type': 'FORMAT', 'location': ''})
                     if len(tokens) > 0:
@@ -569,7 +572,7 @@ class Gff3(object):
                     # ##source-ontology URI
                     # This directive indicates that the GFF3 uses the ontology of source names located at the indicated URI or URL.
                     line_data['directive'] = '##source-ontology'
-                    tokens = line_strip.split()[1:]
+                    tokens = list(line_strip.split()[1:])
                     if len(tokens) != 1:
                         self.add_line_error(line_data, {'message': 'Expecting 1 field, got %d: %s' % (len(tokens) - 1, repr(tokens[1:])), 'error_type': 'FORMAT', 'location': ''})
                     if len(tokens) > 0:
@@ -578,7 +581,7 @@ class Gff3(object):
                     # ##species NCBI_Taxonomy_URI
                     # This directive indicates the species that the annotations apply to.
                     line_data['directive'] = '##species'
-                    tokens = line_strip.split()[1:]
+                    tokens = list(line_strip.split()[1:])
                     if len(tokens) != 1:
                         self.add_line_error(line_data, {'message': 'Expecting 1 field, got %d: %s' % (len(tokens) - 1, repr(tokens[1:])), 'error_type': 'FORMAT', 'location': ''})
                     if len(tokens) > 0:
@@ -587,7 +590,7 @@ class Gff3(object):
                     # ##genome-build source buildName
                     # The genome assembly build name used for the coordinates given in the file.
                     line_data['directive'] = '##genome-build'
-                    tokens = line_strip.split()[1:]
+                    tokens = list(line_strip.split()[1:])
                     if len(tokens) != 2:
                         self.add_line_error(line_data, {'message': 'Expecting 2 fields, got %d: %s' % (len(tokens) - 1, repr(tokens[1:])), 'error_type': 'FORMAT', 'location': ''})
                     if len(tokens) > 0:
@@ -598,14 +601,14 @@ class Gff3(object):
                             pass
                 else:
                     self.add_line_error(line_data, {'message': 'Unknown directive', 'error_type': 'FORMAT', 'location': ''})
-                    tokens = line_strip.split()
+                    tokens = list(line_strip.split())
                     line_data['directive'] = tokens[0]
             elif line_strip.startswith('#'):
                 line_data['line_type'] = 'comment'
             else:
                 # line_type may be a feature or unknown
                 line_data['line_type'] = 'feature'
-                tokens = map(str.strip, line_raw.split('\t'))
+                tokens = list(map(str.strip, line_raw.split('\t')))
                 if len(tokens) != 9:
                     self.add_line_error(line_data, {'message': 'Features should contain 9 fields, got %d: %s' % (len(tokens) - 1, repr(tokens[1:])), 'error_type': 'FORMAT', 'location': ''})
                 for i, t in enumerate(tokens):
