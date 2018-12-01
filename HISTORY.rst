@@ -3,9 +3,10 @@
 History
 -------
 
-0.4.0 (2015-05-05)
+1.0.0 (2018-12-01)
 ---------------------
 
+* Fix Python3 issues
 * Added sequence functions: complement(seq) and translate(seq)
 * Added fasta write function: fasta_dict_to_file(fasta_dict, fasta_file, line_char_limit=None)
 * Added Gff method to return the sequence of line_data: sequence(self, line_data, child_type=None, reference=None)

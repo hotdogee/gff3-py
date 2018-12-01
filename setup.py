@@ -21,7 +21,7 @@ test_requirements = [
 
 setup(
     name='gff3',
-    version='0.3.0',
+    version='1.0.0',
     description='Manipulate genomic features and validate the syntax and reference sequence of your GFF3 files.',
     long_description=readme + '\n\n' + history,
     author='Han Lin',
