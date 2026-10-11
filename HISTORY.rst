@@ -12,7 +12,7 @@ History
 * GFF3 and FASTA files are read and written as UTF-8 on every platform, bytes that are not valid UTF-8 are kept unchanged, written files always use ``\n`` line endings, and paths may be ``pathlib.Path`` objects.
 * ``Gff3.write()`` no longer drops children listed before their parent or the ``##sequence-region`` directives of files without FASTA, writes the ``Target`` attribute correctly, writes each sequence of the embedded FASTA once, and copies lines it could not parse instead of raising.
 * Forward ``Parent`` references are linked to their parents, and ``Parent`` IDs that are never defined are reported as errors.
-* Fixed crashes in ``parse()`` on a duplicate ID after a directive or a line without an ID, in ``check_phase()`` on a ``CDS`` phase of ``.`` (#6) or inconsistent ``CDS`` strands, and in the validation checks on features whose start or end is not an integer.
+* Fixed crashes in ``parse()`` on a duplicate ID after a directive or a line without an ID, in ``check_phase()`` on a ``CDS`` phase of ``.`` (#6) or inconsistent ``CDS`` strands, in ``check_reference()`` on a second feature with a seqid missing from the reference, and in the validation checks on features whose start or end is not an integer.
 * Fixed parsing of blank lines in FASTA sequences.
 * ``Gff3.sequence()`` returns the sequence of a feature, or of its children of ``child_type``, instead of ``None``.
 * The example scripts run on Python 3.

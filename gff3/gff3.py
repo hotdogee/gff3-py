@@ -323,11 +323,12 @@ class Gff3(object):
         if (check_all_sources or sequence_region) and valid_sequence_regions:
             checked_at_least_one_source = True
             for line_data, seqid in valid_line_data_seqid:
-                if seqid not in valid_sequence_regions and seqid not in unresolved_seqid:
-                    unresolved_seqid.add(seqid)
-                    error_lines.add(line_data['line_index'])
-                    self.add_line_error(line_data, {'message': u'Seqid not found in any ##sequence-region: {0:s}'.format(
-                        seqid), 'error_type': 'BOUNDS', 'location': 'sequence_region'})
+                if seqid not in valid_sequence_regions:
+                    if seqid not in unresolved_seqid:
+                        unresolved_seqid.add(seqid)
+                        error_lines.add(line_data['line_index'])
+                        self.add_line_error(line_data, {'message': u'Seqid not found in any ##sequence-region: {0:s}'.format(
+                            seqid), 'error_type': 'BOUNDS', 'location': 'sequence_region'})
                     continue
                 if line_data['start'] < valid_sequence_regions[seqid]['start']:
                     error_lines.add(line_data['line_index'])
@@ -342,10 +343,11 @@ class Gff3(object):
         if (check_all_sources or fasta_embedded) and self.fasta_embedded:
             checked_at_least_one_source = True
             for line_data, seqid in valid_line_data_seqid:
-                if seqid not in self.fasta_embedded and seqid not in unresolved_seqid:
-                    unresolved_seqid.add(seqid)
-                    error_lines.add(line_data['line_index'])
-                    self.add_line_error(line_data, {'message': 'Seqid not found in the embedded ##FASTA: %s' % seqid, 'error_type': 'BOUNDS', 'location': 'fasta_embedded'})
+                if seqid not in self.fasta_embedded:
+                    if seqid not in unresolved_seqid:
+                        unresolved_seqid.add(seqid)
+                        error_lines.add(line_data['line_index'])
+                        self.add_line_error(line_data, {'message': 'Seqid not found in the embedded ##FASTA: %s' % seqid, 'error_type': 'BOUNDS', 'location': 'fasta_embedded'})
                     continue
                 # check bounds
                 if line_data['end'] > len(self.fasta_embedded[seqid]['seq']):
@@ -375,10 +377,11 @@ class Gff3(object):
         if (check_all_sources or fasta_external) and self.fasta_external:
             checked_at_least_one_source = True
             for line_data, seqid in valid_line_data_seqid:
-                if seqid not in self.fasta_external and seqid not in unresolved_seqid:
-                    unresolved_seqid.add(seqid)
-                    error_lines.add(line_data['line_index'])
-                    self.add_line_error(line_data, {'message': 'Seqid not found in the external FASTA file: %s' % seqid, 'error_type': 'BOUNDS', 'location': 'fasta_external'})
+                if seqid not in self.fasta_external:
+                    if seqid not in unresolved_seqid:
+                        unresolved_seqid.add(seqid)
+                        error_lines.add(line_data['line_index'])
+                        self.add_line_error(line_data, {'message': 'Seqid not found in the external FASTA file: %s' % seqid, 'error_type': 'BOUNDS', 'location': 'fasta_external'})
                     continue
                 # check bounds
                 if line_data['end'] > len(self.fasta_external[seqid]['seq']):

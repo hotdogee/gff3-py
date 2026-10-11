@@ -374,6 +374,22 @@ def test_check_reference_unknown_seqid(parse_text):
                                     'Seqid not found in the embedded ##FASTA: ctg2']
 
 
+def test_check_reference_several_features_on_unknown_seqid(parse_text, tmp_path):
+    fasta_path = tmp_path / 'ref.fa'
+    fasta_path.write_text('>ctg1\n' + CTG1_SEQ + '\n', encoding='utf-8')
+    gff = parse_text(HEADER + '##sequence-region ctg1 1 60\n'
+                     'ctg2\t.\tgene\t1\t10\t.\t+\t.\tID=g1\n'
+                     'ctg2\t.\tmRNA\t1\t10\t.\t+\t.\tID=m1;Parent=g1\n'
+                     '##FASTA\n>ctg1\n' + CTG1_SEQ + '\n')
+    gff.parse_fasta_external(str(fasta_path))
+    # each source reports the unknown seqid once and skips the other features on it
+    assert gff.check_reference() == {2}
+    assert errors(gff.lines[2]) == ['Seqid not found in any ##sequence-region: ctg2',
+                                    'Seqid not found in the embedded ##FASTA: ctg2',
+                                    'Seqid not found in the external FASTA file: ctg2']
+    assert errors(gff.lines[3]) == []
+
+
 def test_check_reference_external_fasta(parse_text, tmp_path):
     fasta_path = tmp_path / 'ref.fa'
     fasta_path.write_text('>ctg1\n' + CTG1_SEQ + '\n', encoding='utf-8')
