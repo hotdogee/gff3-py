@@ -19,6 +19,7 @@ History
 * ``Gff3.sequence()`` returns the sequence of a feature, or of its children of ``child_type``, instead of ``None``.
 * The example scripts run on Python 3.
 * Packaging moved to ``pyproject.toml``. Tests run with pytest on GitHub Actions, and releases are published to PyPI with trusted publishing.
+* The package metadata now declares the ISC license, which is the license in ``LICENSE``. Earlier releases were labelled BSD by mistake.
 
 1.0.1 (2021-11-12)
 ---------------------
