@@ -94,7 +94,10 @@ Each entry of ``gff.lines`` is a ``dict`` describing one line of the file: its
 parsed columns (``seqid``, ``type``, ``start``, ``end``, ``strand``, ``phase``,
 ``attributes``, ...), its ``parents`` and ``children``, and any ``line_errors``.
 ``gff.features`` maps each ``ID`` to the list of lines that share it. Paths can be
-given as strings or ``pathlib.Path`` objects, and files are read and written as UTF-8.
+given as strings or ``pathlib.Path`` objects, and files given as paths are read and
+written as UTF-8. If you pass an open file object instead, open it with
+``encoding='utf-8', errors='surrogateescape'`` (and ``newline='\n'`` for writing)
+to get the same behaviour.
 
 The following example demonstrates how to filter, traverse, and modify the parsed gff3 ``lines`` list.
 
