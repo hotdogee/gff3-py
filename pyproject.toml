@@ -37,9 +37,10 @@ Changelog = "https://github.com/hotdogee/gff3-py/blob/master/HISTORY.rst"
 
 [dependency-groups]
 test = ["pytest>=8"]
-docs = ["sphinx>=7"]
+lint = ["ruff"]
 dev = [
     { include-group = "test" },
+    { include-group = "lint" },
     "build",
     "coverage",
     "twine",
@@ -54,3 +55,7 @@ version = { attr = "gff3.__version__" }
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["-ra"]
+
+[tool.ruff.lint]
+# Syntax errors and pyflakes checks (undefined names, unused imports and variables, ...)
+select = ["E9", "F"]

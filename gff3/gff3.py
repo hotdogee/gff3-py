@@ -865,7 +865,6 @@ class Gff3(object):
             except TypeError: # assume feature_id(str)
                 old_id = old_parent
         old_feature = self.features[old_id]
-        old_indexes = [ld['line_index'] for ld in old_feature]
         try: # assume line_data(dict)
             new_id = new_parent['attributes']['ID']
         except TypeError:
@@ -874,7 +873,6 @@ class Gff3(object):
             except TypeError: # assume feature_id(str)
                 new_id = new_parent
         new_feature = self.features[new_id]
-        new_indexes = [ld['line_index'] for ld in new_feature]
         # build a list of children to be moved
         # add the child to the new parent's children list if its not already there
         # update the child's parent list and parent attribute
