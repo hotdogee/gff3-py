@@ -21,6 +21,7 @@ try:
 except ImportError:
     from urllib.parse import quote, unquote
 from textwrap import wrap
+import os
 import sys
 import re
 import string
@@ -32,6 +33,18 @@ if not logger.handlers:
     lh = logging.StreamHandler()
     lh.setFormatter(logging.Formatter('%(levelname)-8s %(message)s'))
     logger.addHandler(lh)
+
+def _is_path(file):
+    return isinstance(file, (str, os.PathLike))
+
+def _open_text(path, mode):
+    """Open a GFF3 or FASTA file given as a path in text mode.
+
+    Files are read and written as UTF-8. Bytes that are not valid UTF-8 are kept as-is
+    using the 'surrogateescape' error handler, so parsing and writing a file never fails
+    on, or changes, unusual bytes. Output always uses '\\n' line endings.
+    """
+    return open(path, mode, encoding='utf-8', errors='surrogateescape', newline='\n' if 'w' in mode else None)
 
 try:
     COMPLEMENT_TRANS = string.maketrans('TAGCtagc', 'ATCGATCG')
@@ -67,8 +80,8 @@ def fasta_file_to_dict(fasta_file, id=True, header=False, seq=False):
     * Added support for url escaped id
     """
     fasta_file_f = fasta_file
-    if isinstance(fasta_file, str):
-        fasta_file_f = open(fasta_file, 'rb')
+    if _is_path(fasta_file):
+        fasta_file_f = _open_text(fasta_file, 'r')
 
     fasta_dict = OrderedDict()
     keys = ['id', 'header', 'seq']
@@ -102,7 +115,7 @@ def fasta_file_to_dict(fasta_file, id=True, header=False, seq=False):
             entry['seq'].append(line.upper())
         line_num += 1
 
-    if isinstance(fasta_file, str):
+    if _is_path(fasta_file):
         fasta_file_f.close()
 
     key = '||'.join([entry[i] for i in keys if flags[i]])
@@ -130,14 +143,17 @@ def fasta_dict_to_file(fasta_dict, fasta_file, line_char_limit=None):
     :return: None
     """
     fasta_fp = fasta_file
-    if isinstance(fasta_file, str):
-        fasta_fp = open(fasta_file, 'wb')
+    if _is_path(fasta_file):
+        fasta_fp = _open_text(fasta_file, 'w')
 
     for key in fasta_dict:
         seq = fasta_dict[key]['seq']
         if line_char_limit:
             seq = '\n'.join([seq[i:i+line_char_limit] for i in range(0, len(seq), line_char_limit)])
         fasta_fp.write(u'{0:s}\n{1:s}\n'.format(fasta_dict[key]['header'], seq))
+
+    if _is_path(fasta_file):
+        fasta_fp.close()
 
 
 class Gff3(object):
@@ -455,8 +471,8 @@ class Gff3(object):
         unescaped_field = re.compile(r'[\x00-\x1f\x7f]|%(?![0-9a-fA-F]{2})').search
 
         gff_fp = gff_file
-        if isinstance(gff_file, str):
-            gff_fp = open(gff_file, 'r')
+        if _is_path(gff_file):
+            gff_fp = _open_text(gff_file, 'r')
 
         lines = []
         current_line_num = 1 # line numbers start at 1
@@ -769,7 +785,7 @@ class Gff3(object):
             current_line_num += 1
             lines.append(line_data)
 
-        if isinstance(gff_file, str):
+        if _is_path(gff_file):
             gff_fp.close()
 
         # global look up of unresolved parents
@@ -913,8 +929,8 @@ class Gff3(object):
 
     def write(self, gff_file, embed_fasta=None, fasta_char_limit=None):
         gff_fp = gff_file
-        if isinstance(gff_file, str):
-            gff_fp = open(gff_file, 'wb')
+        if _is_path(gff_file):
+            gff_fp = _open_text(gff_file, 'w')
 
         wrote_sequence_region = set()
         # build sequence region data
@@ -983,7 +999,7 @@ class Gff3(object):
             gff_fp.write('##FASTA\n')
             fasta_dict_to_file(fasta, gff_fp, line_char_limit=fasta_char_limit)
 
-        if isinstance(gff_file, str):
+        if _is_path(gff_file):
             gff_fp.close()
 
     def sequence(self, line_data, child_type=None, reference=None):
