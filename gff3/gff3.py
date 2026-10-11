@@ -929,7 +929,10 @@ class Gff3(object):
             for seqid in self.fasta_embedded:
                 sequence_regions[seqid] = (1, len(self.fasta_embedded[seqid]['seq']))
         else:
-            pass
+            # no FASTA to compute them from, keep the valid ##sequence-region directives that were parsed
+            for line_data in self.lines:
+                if line_data['directive'] == '##sequence-region' and not line_data['line_errors']:
+                    sequence_regions.setdefault(line_data['seqid'], (line_data['start'], line_data['end']))
 
         wrote_lines = set()
         field_keys = ['seqid', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase']
@@ -943,6 +946,9 @@ class Gff3(object):
             for k, v in sorted(line_data['attributes'].items(), key=lambda x: attributes_sort_map[x[0]], reverse=True):
                 if isinstance(v, list):
                     v = ','.join(v)
+                elif k == 'Target' and isinstance(v, dict):
+                    # parse() splits Target into a dict, join it back into "target_id start end [strand]"
+                    v = ' '.join([str(v[t]) for t in ('target_id', 'start', 'end', 'strand') if t in v])
                 attribute_list.append('%s=%s' % (str(k), str(v)))
             field_list.append(';'.join(attribute_list))
             gff_fp.write('\t'.join(field_list) + '\n')

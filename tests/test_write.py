@@ -22,6 +22,17 @@ def feature_records(gff):
     return sorted(records, key=repr)
 
 
+def directive_records(gff):
+    records = []
+    for line_data in gff.lines:
+        if line_data['line_type'] == 'directive' and line_data['directive'] not in ('###', '##FASTA'):
+            if line_data['directive'] == '##sequence-region':
+                records.append((line_data['directive'], line_data['seqid'], line_data['start'], line_data['end']))
+            else:
+                records.append((line_data['directive'], line_data['line_raw'].strip()))
+    return sorted(records, key=repr)
+
+
 def fasta_records(fasta_dict):
     return {key: (entry['header'], entry['seq']) for key, entry in fasta_dict.items()}
 
@@ -47,6 +58,7 @@ def test_round_trip_preserves_features(sample, tmp_path, quiet_logger):
     assert feature_records(reparsed) == feature_records(sample)
     assert len(feature_records(reparsed)) == 8
     assert sorted(reparsed.features) == sorted(sample.features)
+    assert directive_records(reparsed) == directive_records(sample)
     assert [ld['line_errors'] for ld in reparsed.lines if ld['line_errors']] == []
 
 
@@ -144,3 +156,41 @@ def test_round_trip_example_annotations(tmp_path, quiet_logger):
     reparsed, _ = round_trip(gff, tmp_path, quiet_logger)
     assert len(feature_records(gff)) > 3000
     assert feature_records(reparsed) == feature_records(gff)
+    assert directive_records(reparsed) == directive_records(gff)
+
+
+@pytest.mark.parametrize('target', ['EST1 5 33 +', 'EST1 5 33 -', 'EST1 5 33'])
+def test_round_trip_target_attribute(parse_text, tmp_path, quiet_logger, target):
+    gff = parse_text('##gff-version 3\nctg1\t.\tmatch\t2\t30\t.\t+\t.\tID=match1;Target=' + target + '\n')
+    out = io.StringIO()
+    gff.write(out)
+    assert '\tID=match1;Target=' + target + '\n' in out.getvalue()
+    reparsed, _ = round_trip(gff, tmp_path, quiet_logger)
+    assert reparsed.lines[1]['attributes']['Target'] == gff.lines[1]['attributes']['Target']
+    assert reparsed.lines[1]['line_errors'] == []
+
+
+def test_write_keeps_sequence_region_without_fasta(parse_text, tmp_path, quiet_logger):
+    gff = parse_text('##gff-version 3\n'
+                     '##sequence-region ctg1 1 1000\n'
+                     '##sequence-region ctg2 1 500\n'
+                     'ctg1\t.\tgene\t1\t100\t.\t+\t.\tID=g1\n'
+                     'ctg2\t.\tgene\t1\t100\t.\t+\t.\tID=g2\n')
+    reparsed, out_path = round_trip(gff, tmp_path, quiet_logger)
+    assert out_path.read_text(encoding='utf-8') == ('##gff-version 3\n'
+                                                    '##sequence-region ctg1 1 1000\n'
+                                                    'ctg1\t.\tgene\t1\t100\t.\t+\t.\tID=g1\n'
+                                                    '###\n'
+                                                    '##sequence-region ctg2 1 500\n'
+                                                    'ctg2\t.\tgene\t1\t100\t.\t+\t.\tID=g2\n'
+                                                    '###\n')
+    assert directive_records(reparsed) == directive_records(gff)
+
+
+def test_write_sequence_region_prefers_fasta_length(sample):
+    # the FASTA sequence length wins over a stale ##sequence-region directive
+    sample.lines[1]['end'] = 1000
+    out = io.StringIO()
+    sample.write(out)
+    assert '##sequence-region ctg1 1 60\n' in out.getvalue()
+    assert '1000' not in out.getvalue()
