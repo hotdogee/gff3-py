@@ -241,7 +241,7 @@ class Gff3(object):
         3. calculate and validate phase
         """
         plus_minus = set(['+', '-'])
-        for k, g in groupby(sorted([line for line in self.lines if  line['line_type'] == 'feature' and line['type'] == 'CDS' and 'Parent' in line['attributes']], key=lambda x: x['attributes']['Parent']), key=lambda x: x['attributes']['Parent']):
+        for k, g in groupby(sorted([line for line in self.lines if  line['line_type'] == 'feature' and line['type'] == 'CDS' and 'Parent' in line.get('attributes', {})], key=lambda x: x['attributes']['Parent']), key=lambda x: x['attributes']['Parent']):
             cds_list = list(g)
             strand_set = list(set([line['strand'] for line in cds_list]))
             if len(strand_set) != 1:
@@ -964,6 +964,11 @@ class Gff3(object):
         def write_feature(line_data):
             if line_data['line_status'] == 'removed':
                 return
+            if 'attributes' not in line_data:
+                # the line could not be split into 9 fields, write it unchanged
+                gff_fp.write(line_data['line_raw'].rstrip('\n') + '\n')
+                wrote_lines.add(line_data['line_index'])
+                return
             field_list = [str(line_data[k]) for k in field_keys]
             attribute_list = []
             for k, v in sorted(line_data['attributes'].items(), key=lambda x: attributes_sort_map[x[0]], reverse=True):
@@ -980,7 +985,8 @@ class Gff3(object):
         ignore_directives = ['##sequence-region', '###', '##FASTA']
         directives_lines = [line_data for line_data in self.lines if line_data['line_type'] == 'directive' and line_data['directive'] not in ignore_directives]
         for directives_line in directives_lines:
-            gff_fp.write(directives_line['line_raw'])
+            # the last line of a file may not end with a newline
+            gff_fp.write(directives_line['line_raw'].rstrip('\n') + '\n')
 
         # write features
         # get a list of root nodes

@@ -187,6 +187,28 @@ def test_write_keeps_sequence_region_without_fasta(parse_text, tmp_path, quiet_l
     assert directive_records(reparsed) == directive_records(gff)
 
 
+@pytest.mark.parametrize('line', [
+    'ctg1\t.\tgene\t1\t100\t.\t+',
+    'ctg1 . gene 1 100 . + . ID=g1',
+    'ctg1\t.\tCDS\t1\t100\t.\t+\t0',
+])
+def test_write_keeps_malformed_feature_lines(parse_text, line):
+    gff = parse_text('##gff-version 3\n' + line + '\nctg1\t.\tgene\t1\t100\t.\t+\t.\tID=g2\n')
+    assert gff.lines[1]['line_errors']
+    gff.check_phase()
+    out = io.StringIO()
+    gff.write(out)
+    assert out.getvalue() == '##gff-version 3\n' + line + '\n###\nctg1\t.\tgene\t1\t100\t.\t+\t.\tID=g2\n###\n'
+
+
+def test_write_directive_on_last_line_without_newline(parse_text):
+    gff = parse_text('##gff-version 3\nctg1\t.\tgene\t1\t100\t.\t+\t.\tID=g1\n##species http://example.com/taxon')
+    out = io.StringIO()
+    gff.write(out)
+    assert out.getvalue() == ('##gff-version 3\n##species http://example.com/taxon\n'
+                              'ctg1\t.\tgene\t1\t100\t.\t+\t.\tID=g1\n###\n')
+
+
 def test_write_sequence_region_prefers_fasta_length(sample):
     # the FASTA sequence length wins over a stale ##sequence-region directive
     sample.lines[1]['end'] = 1000
