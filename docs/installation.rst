@@ -2,11 +2,14 @@
 Installation
 ============
 
+gff3 requires Python 3.10 or newer and has no other dependencies.
+
 At the command line::
 
-    $ easy_install gff3
+    $ pip install gff3
 
-Or, if you have virtualenvwrapper installed::
+Or, to keep it in its own virtual environment::
 
-    $ mkvirtualenv gff3
+    $ python -m venv .venv
+    $ source .venv/bin/activate  # on Windows: .venv\Scripts\activate
     $ pip install gff3

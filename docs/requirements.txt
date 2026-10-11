@@ -1,0 +1,2 @@
+# Pinned for reproducible Read the Docs builds, updated by Dependabot
+sphinx==9.1.0
