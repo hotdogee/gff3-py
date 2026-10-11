@@ -174,7 +174,8 @@ Clone the repository and install it in editable mode with the development tools:
     $ cd gff3-py
     $ python -m venv .venv
     $ source .venv/bin/activate  # on Windows: .venv\Scripts\activate
-    $ pip install -e . --group dev  # requires pip 25.1 or newer
+    $ python -m pip install --upgrade pip  # --group needs pip 25.1 or newer
+    $ pip install -e . --group dev
 
 Run the tests, the linter, and the build check:
 
@@ -186,8 +187,8 @@ Run the tests, the linter, and the build check:
     $ twine check --strict dist/*
 
 ``tox`` runs the tests on every supported Python version. GitHub Actions runs the
-tests on Linux, Windows and macOS with Python 3.10 to 3.14 for every push and pull
-request, and publishing a GitHub release uploads it to PyPI.
+tests on Linux, Windows and macOS with Python 3.10 to 3.14 for every pull request
+and every push to master, and publishing a GitHub release uploads it to PyPI.
 
 Bug reports and pull requests are welcome at https://github.com/hotdogee/gff3-py/issues.
 
