@@ -1,0 +1,60 @@
+name: Publish to PyPI
+
+# Publishes the release to https://pypi.org/project/gff3/ with PyPI trusted publishing (OIDC),
+# so no API token is stored in the repository. PyPI must have a trusted publisher configured
+# for this repository, this workflow file (publish.yml) and the "pypi" environment.
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build distributions
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: false
+      - name: Build the sdist and wheel
+        run: uv build
+      - name: Check the distributions
+        run: uvx twine check --strict dist/*
+      - name: Check that the release tag matches the package version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="${TAG#v}"
+          if [ ! -f "dist/gff3-${version}.tar.gz" ]; then
+            echo "::error::Release tag ${TAG} does not match the built package version:" dist/*
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Upload to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/gff3/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.14.2
