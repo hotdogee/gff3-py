@@ -90,7 +90,7 @@ using an external FASTA file named ``annotations.fa`` looks like:
             print(line['line_index'] + 1, error['error_type'], error['message'])
 
 Each entry of ``gff.lines`` is a ``dict`` describing one line of the file: its
-``line_type`` (``'feature'``, ``'directive'`` or ``'comment'``), the raw text, the
+``line_type`` (``'feature'``, ``'directive'``, ``'comment'`` or ``'blank'``), the raw text, the
 parsed columns (``seqid``, ``type``, ``start``, ``end``, ``strand``, ``phase``,
 ``attributes``, ...), its ``parents`` and ``children``, and any ``line_errors``.
 ``gff.features`` maps each ``ID`` to the list of lines that share it. Paths can be

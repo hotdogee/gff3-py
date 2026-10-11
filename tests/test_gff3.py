@@ -325,6 +325,26 @@ def test_parse_reports_missing_gff_version(parse_text):
     assert errors(gff.lines[0]) == ['"##gff-version" missing from the first line']
 
 
+def test_parse_counts_blank_lines(parse_text):
+    gff = parse_text('\n' + HEADER + '\n\n'
+                     'ctg1\t.\tgene\t1\t100\t.\t+\t.\tID=g1;Color=red\n'
+                     'ctg1\t.\tCDS\t1\t30\t.\t+\t0\tID=c1;Parent=g1\n'
+                     '\n'
+                     'ctg1\t.\tCDS\t61\t90\t.\t+\t0\tID=c1;Parent=g1\n')
+    assert [ld['line_type'] for ld in gff.lines] == ['blank', 'directive', 'blank', 'blank', 'feature', 'feature', 'blank', 'feature']
+    assert [ld['line_index'] for ld in gff.lines] == list(range(8))
+    assert errors(gff.lines[0]) == ['"##gff-version" missing from the first line']
+    # the feature on line 5 is reported as line 5
+    assert errors(gff.features['g1'][0]) == ['Unknown reserved (uppercase) attribute: "Color"']
+    assert gff.features['g1'][0]['line_index'] == 4
+    # a blank line between the lines of a feature does not make them non-adjacent
+    assert [ld['line_index'] for ld in gff.features['c1']] == [5, 7]
+    assert errors(gff.lines[7]) == []
+    out = io.StringIO()
+    gff.write(out)
+    assert '\n\n' not in out.getvalue()
+
+
 def test_parse_reports_duplicate_sequence_region(parse_text):
     gff = parse_text(HEADER + '##sequence-region ctg1 1 100\n##sequence-region ctg1 1 200\n')
     assert errors(gff.lines[1]) == []

@@ -504,6 +504,9 @@ class Gff3(object):
                 self.add_line_error(line_data, {'message': '"##gff-version" missing from the first line', 'error_type': 'FORMAT', 'location': ''})
             if len(line_strip) == 0:
                 line_data['line_type'] = 'blank'
+                # keep blank lines so that line_index and the reported line numbers match the file
+                current_line_num += 1
+                lines.append(line_data)
                 continue
             if line_strip.startswith('##'):
                 line_data['line_type'] = 'directive'
@@ -782,8 +785,8 @@ class Gff3(object):
                                 elif tag[:1].isupper() and tag not in reserved_attributes: # {'ID', 'Name', 'Alias', 'Parent', 'Target', 'Gap', 'Derives_from', 'Note', 'Dbxref', 'Ontology_term', 'Is_circular'}
                                     self.add_line_error(line_data, {'message': 'Unknown reserved (uppercase) attribute: "%s"' % tag, 'error_type': 'FORMAT', 'location': ''})
                                 elif tag == 'ID':
-                                    # check for duplicate ID in non-adjacent lines
-                                    if value in features and lines[-1].get('attributes', {}).get(tag) != value:
+                                    # check for duplicate ID in non-adjacent lines, blank lines in between are ignored
+                                    if value in features and next((ld for ld in reversed(lines) if ld['line_type'] != 'blank'), {}).get('attributes', {}).get(tag) != value:
                                         self.add_line_error(line_data, {'message': 'Duplicate ID: "%s" in non-adjacent lines: %s' % (value, ','.join([str(f['line_index'] + 1) for f in features[value]])), 'error_type': 'FORMAT', 'location': ''}, log_level=logging.WARNING)
                                     features[value].append(line_data)
                 except IndexError:

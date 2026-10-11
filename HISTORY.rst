@@ -13,6 +13,7 @@ History
 * ``Gff3.write()`` no longer drops children listed before their parent or the ``##sequence-region`` directives of files without FASTA, writes the ``Target`` attribute correctly, writes ``.`` instead of an empty column 9 for features without attributes, writes each sequence of the embedded FASTA once, and copies lines it could not parse instead of raising.
 * Forward ``Parent`` references are linked to their parents, and ``Parent`` IDs that are never defined are reported as errors.
 * Fixed crashes in ``parse()`` on a duplicate ID after a directive or a line without an ID, in ``check_phase()`` on a ``CDS`` phase of ``.`` (#6) or inconsistent ``CDS`` strands, in ``check_reference()`` on a second feature with a seqid missing from the reference, and in the validation checks on features whose start or end is not an integer.
+* Blank lines are kept in ``Gff3.lines`` with the ``line_type`` ``'blank'``, so ``line_index`` and the line numbers in error messages match the file after a blank line. A blank first line is now reported as ``"##gff-version" missing from the first line``.
 * ``Gff3.remove(line_data, root_type=...)`` removes the whole tree of the ancestor whose type is ``root_type``, as documented. Before, ``root_type`` never matched and only ``line_data`` and its descendants were removed.
 * Fixed parsing of blank lines in FASTA sequences.
 * ``Gff3.sequence()`` returns the sequence of a feature, or of its children of ``child_type``, instead of ``None``.
