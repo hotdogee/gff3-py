@@ -10,4 +10,5 @@ Development Lead
 Contributors
 ------------
 
-None yet. Why not be the first?
+* Yi Hsiao <hsiaoyi0504@gmail.com>
+* Uemit Seren <uemit.seren@gmail.com>
