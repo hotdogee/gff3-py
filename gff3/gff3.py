@@ -717,13 +717,14 @@ class Gff3(object):
 
                                 if tag == 'Parent':
                                     for feature_id in line_data['attributes']['Parent']:
-                                        try:
+                                        # features is a defaultdict, so check membership instead of catching KeyError
+                                        if feature_id in features:
                                             line_data['parents'].append(features[feature_id])
                                             for ld in features[feature_id]:
                                                 # no need to check if line_data in ld['children'], because it is impossible, each ld maps to only one feature_id, so the ld we get are all different
                                                 ld['children'].append(line_data)
-                                        except KeyError: # features[id]
-                                            self.add_line_error(line_data, {'message': '%s attribute has unresolved forward reference: %s' % (tag, feature_id), 'error_type': 'FORMAT', 'location': ''})
+                                        else:
+                                            # forward reference, resolved after the whole file has been read
                                             unresolved_parents[feature_id].append(line_data)
                             elif tag == 'Target':
                                 if value.find(',') >= 0:
@@ -769,7 +770,7 @@ class Gff3(object):
                                     self.add_line_error(line_data, {'message': 'Unknown reserved (uppercase) attribute: "%s"' % tag, 'error_type': 'FORMAT', 'location': ''})
                                 elif tag == 'ID':
                                     # check for duplicate ID in non-adjacent lines
-                                    if value in features and lines[-1]['attributes'][tag] != value:
+                                    if value in features and lines[-1].get('attributes', {}).get(tag) != value:
                                         self.add_line_error(line_data, {'message': 'Duplicate ID: "%s" in non-adjacent lines: %s' % (value, ','.join([str(f['line_index'] + 1) for f in features[value]])), 'error_type': 'FORMAT', 'location': ''}, log_level=logging.WARNING)
                                     features[value].append(line_data)
                 except IndexError:
@@ -783,11 +784,18 @@ class Gff3(object):
         # global look up of unresolved parents
         for feature_id in unresolved_parents:
             if feature_id in features:
+                # forward references are allowed, link them now that the parent is known
                 for line in unresolved_parents[feature_id]:
-                    self.add_line_error(line, {'message': 'Unresolved forward reference: "%s", found defined in lines: %s' % (feature_id, ','.join([str(ld['line_index'] + 1) for ld in features[feature_id]])), 'error_type': 'FORMAT', 'location': ''})
+                    line['parents'].append(features[feature_id])
+                    for ld in features[feature_id]:
+                        ld['children'].append(line)
+            else:
+                for line in unresolved_parents[feature_id]:
+                    self.add_line_error(line, {'message': 'Parent attribute has unresolved forward reference: %s' % feature_id, 'error_type': 'FORMAT', 'location': ''})
 
         self.lines = lines
         self.features = features
+        self.unresolved_parents = dict((feature_id, unresolved_parents[feature_id]) for feature_id in unresolved_parents if feature_id not in features)
         return 1
 
     def descendants(self, line_data):
