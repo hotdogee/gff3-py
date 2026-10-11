@@ -434,6 +434,27 @@ def test_remove_marks_the_whole_feature_tree(sample):
                               '###\n')
 
 
+TWO_MRNA_GENE = (HEADER +
+                 'ctg1\t.\tgene\t1\t100\t.\t+\t.\tID=g1\n'
+                 'ctg1\t.\tmRNA\t1\t100\t.\t+\t.\tID=m1;Parent=g1\n'
+                 'ctg1\t.\texon\t1\t30\t.\t+\t.\tID=e1;Parent=m1\n'
+                 'ctg1\t.\texon\t61\t100\t.\t+\t.\tID=e2;Parent=m1\n'
+                 'ctg1\t.\tmRNA\t1\t100\t.\t+\t.\tID=m2;Parent=g1\n'
+                 'ctg1\t.\texon\t1\t100\t.\t+\t.\tID=e3;Parent=m2\n')
+
+
+@pytest.mark.parametrize('root_type, expected', [
+    ('mRNA', ['e1', 'e2', 'm1']),
+    ('gene', ['e1', 'e2', 'e3', 'g1', 'm1', 'm2']),
+    # no ancestor of this type, remove only the line and its descendants
+    ('CDS', ['e1']),
+])
+def test_remove_root_type(parse_text, root_type, expected):
+    gff = parse_text(TWO_MRNA_GENE)
+    gff.remove(gff.features['e1'][0], root_type=root_type)
+    assert ids(ld for ld in gff.lines if ld['line_status'] == 'removed') == expected
+
+
 def test_adopt_moves_children(parse_text):
     gff = parse_text(HEADER +
                      'ctg1\t.\tgene\t1\t100\t.\t+\t.\tID=geneA\n'

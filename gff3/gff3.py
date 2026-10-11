@@ -922,7 +922,7 @@ class Gff3(object):
         :param root_type:
         :return:
         """
-        roots = [ld for ld in self.ancestors(line_data) if (root_type and ld['line_type'] == root_type) or (not root_type and not ld['parents'])] or [line_data]
+        roots = [ld for ld in self.ancestors(line_data) if (root_type and ld['type'] == root_type) or (not root_type and not ld['parents'])] or [line_data]
         for root in roots:
             root['line_status'] = 'removed'
             root_descendants = self.descendants(root)
