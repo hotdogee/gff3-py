@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gff3"
+dynamic = ["version"]
+description = "Manipulate genomic features and validate the syntax and reference sequence of your GFF3 files."
+readme = "README.rst"
+requires-python = ">=3.10"
+license = "ISC"
+license-files = ["LICENSE"]
+authors = [{ name = "Han Lin", email = "hotdogee@gmail.com" }]
+keywords = ["gff3", "gff", "fasta", "genome annotation", "bioinformatics"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/hotdogee/gff3-py"
+Documentation = "https://gff3-py.readthedocs.io/"
+Issues = "https://github.com/hotdogee/gff3-py/issues"
+Changelog = "https://github.com/hotdogee/gff3-py/blob/master/HISTORY.rst"
+
+[dependency-groups]
+test = ["pytest>=8"]
+docs = ["sphinx>=7"]
+dev = [
+    { include-group = "test" },
+    "build",
+    "coverage",
+    "twine",
+]
+
+[tool.setuptools]
+packages = ["gff3"]
+
+[tool.setuptools.dynamic]
+version = { attr = "gff3.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-ra"]

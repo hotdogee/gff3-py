@@ -1,4 +1,4 @@
-.PHONY: clean-pyc clean-build docs clean
+.PHONY: clean-pyc clean-build clean-test docs clean lint test test-all coverage dist release
 
 help:
 	@echo "clean - remove all build, test, coverage and Python artifacts"
@@ -10,8 +10,8 @@ help:
 	@echo "test-all - run tests on every Python version with tox"
 	@echo "coverage - check code coverage quickly with the default Python"
 	@echo "docs - generate Sphinx HTML documentation, including API docs"
-	@echo "release - package and upload a release"
-	@echo "dist - package"
+	@echo "dist - build the sdist and wheel and check them with twine"
+	@echo "release - upload dist/ to PyPI manually (normally done by the publish workflow)"
 
 clean: clean-build clean-pyc clean-test
 
@@ -35,13 +35,13 @@ lint:
 	flake8 gff3 tests
 
 test:
-	python setup.py test
+	python -m pytest
 
 test-all:
 	tox
 
 coverage:
-	coverage run --source gff3 setup.py test
+	coverage run --source gff3 -m pytest
 	coverage report -m
 	coverage html
 	open htmlcov/index.html
@@ -54,11 +54,10 @@ docs:
 	$(MAKE) -C docs html
 	open docs/_build/html/index.html
 
-release: clean
-	python setup.py sdist upload
-	python setup.py bdist_wheel upload
-
 dist: clean
-	python setup.py sdist
-	python setup.py bdist_wheel
+	python -m build
+	python -m twine check --strict dist/*
 	ls -l dist
+
+release: dist
+	python -m twine upload dist/*
