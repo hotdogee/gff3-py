@@ -216,3 +216,12 @@ def test_write_sequence_region_prefers_fasta_length(sample):
     sample.write(out)
     assert '##sequence-region ctg1 1 60\n' in out.getvalue()
     assert '1000' not in out.getvalue()
+
+
+def test_round_trip_feature_without_attributes(parse_text, tmp_path, quiet_logger):
+    gff = parse_text('##gff-version 3\nctg1\t.\tregion\t1\t100\t.\t+\t.\t.\n')
+    assert gff.lines[1]['attributes'] == {}
+    assert gff.lines[1]['line_errors'] == []
+    reparsed, out_path = round_trip(gff, tmp_path, quiet_logger)
+    assert out_path.read_text(encoding='utf-8') == '##gff-version 3\nctg1\t.\tregion\t1\t100\t.\t+\t.\t.\n###\n'
+    assert reparsed.lines[1]['line_errors'] == []

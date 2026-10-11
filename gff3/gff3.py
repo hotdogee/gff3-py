@@ -979,7 +979,8 @@ class Gff3(object):
                     # parse() splits Target into a dict, join it back into "target_id start end [strand]"
                     v = ' '.join([str(v[t]) for t in ('target_id', 'start', 'end', 'strand') if t in v])
                 attribute_list.append('%s=%s' % (str(k), str(v)))
-            field_list.append(';'.join(attribute_list))
+            # a feature without attributes has '.' in column 9
+            field_list.append(';'.join(attribute_list) or '.')
             gff_fp.write('\t'.join(field_list) + '\n')
             wrote_lines.add(line_data['line_index'])
         # write directives
