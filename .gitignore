@@ -44,3 +44,8 @@ docs/_build
 
 # PyCharm
 .idea
+
+# Virtual environments and tool caches
+.venv
+.pytest_cache
+.ruff_cache

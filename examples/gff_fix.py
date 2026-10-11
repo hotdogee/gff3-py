@@ -1,4 +1,4 @@
-#! /usr/local/bin/python2.7
+#!/usr/bin/env python3
 # Copyright (C) 2014  Han Lin <hotdogee [at] gmail [dot] com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -19,12 +19,6 @@ Changelog:
 """
 
 import sys
-from collections import OrderedDict
-from collections import defaultdict
-from itertools import groupby
-from urllib import quote, unquote
-from textwrap import wrap
-import re
 import logging
 # try to import from project first
 from os.path import dirname
@@ -35,7 +29,7 @@ __version__ = '1.0'
 
 
 def query_yes_no(question, default='yes'):
-    """Ask a yes/no question via raw_input() and return their answer.
+    """Ask a yes/no question via input() and return their answer.
 
     'question' is a string that is presented to the user.
     'default' is the presumed answer if the user just hits <Enter>.
@@ -57,7 +51,7 @@ def query_yes_no(question, default='yes'):
 
     while True:
         sys.stderr.write(question + prompt)
-        choice = raw_input().strip().lower()
+        choice = input().strip().lower()
         if default is not None and choice == '':
             return valid[default]
         elif choice in valid:
@@ -123,6 +117,7 @@ if __name__ == '__main__':
     if args.gff_file:
         logger_stderr.info('Checking GFF3 file (%s)...', args.gff_file)
     elif not sys.stdin.isatty(): # if STDIN connected to pipe or file
+        sys.stdin.reconfigure(encoding='utf-8', errors='surrogateescape')
         args.gff_file = sys.stdin
         logger_stderr.info('Reading from STDIN...')
     else: # no input
@@ -140,8 +135,10 @@ if __name__ == '__main__':
 
     if args.report_file:
         logger_stderr.info('Writing validation report (%s)...', args.report_file)
-        report_fh = open(args.report_file, 'wb')
+        report_fh = open(args.report_file, 'w', encoding='utf-8', errors='surrogateescape')
     else:
+        # write the report as UTF-8 and keep any undecodable bytes from the GFF3 file as-is
+        sys.stdout.reconfigure(encoding='utf-8', errors='surrogateescape')
         report_fh = sys.stdout
 
     # Validation Summary

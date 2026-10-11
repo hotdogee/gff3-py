@@ -1,4 +1,3 @@
-#! /usr/local/bin/python2.7
 # -*- coding: utf-8 -*-
 # Copyright (C) 2014  Han Lin <hotdogee [at] gmail [dot] com>
 
@@ -11,19 +10,11 @@ Check if the ##sequence-region matches the FASTA file. (Requires FASTA and ##seq
 Add the ##sequence-region directives if missing. (Requires FASTA)
 Check and correct the phase for CDS features.
 """
-from __future__ import print_function
-
-#from collections import OrderedDict # not available in 2.6
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from itertools import groupby
-try:
-    from urllib import quote, unquote
-except ImportError:
-    from urllib.parse import quote, unquote
-from textwrap import wrap
-import sys
+from urllib.parse import unquote
+import os
 import re
-import string
 import logging
 logger = logging.getLogger(__name__)
 #log.basicConfig(level=logging.DEBUG, format='%(levelname)-8s %(message)s')
@@ -33,10 +24,23 @@ if not logger.handlers:
     lh.setFormatter(logging.Formatter('%(levelname)-8s %(message)s'))
     logger.addHandler(lh)
 
-try:
-    COMPLEMENT_TRANS = string.maketrans('TAGCtagc', 'ATCGATCG')
-except AttributeError:
-    COMPLEMENT_TRANS = str.maketrans('TAGCtagc', 'ATCGATCG')
+def _is_path(file):
+    return isinstance(file, (str, os.PathLike))
+
+def _open_text(path, mode):
+    """Open a GFF3 or FASTA file given as a path in text mode.
+
+    Files are read and written as UTF-8. Bytes that are not valid UTF-8 are kept as-is
+    using the 'surrogateescape' error handler, so parsing and writing a file never fails
+    on, or changes, unusual bytes. Output always uses '\\n' line endings.
+    """
+    return open(path, mode, encoding='utf-8', errors='surrogateescape', newline='\n' if 'w' in mode else None)
+
+def _has_int_coordinates(line_data):
+    # start and end are left as strings when they are not valid integers, e.g. '.'
+    return isinstance(line_data.get('start'), int) and isinstance(line_data.get('end'), int)
+
+COMPLEMENT_TRANS = str.maketrans('TAGCtagc', 'ATCGATCG')
 def complement(seq):
     return seq.translate(COMPLEMENT_TRANS)
 
@@ -67,8 +71,8 @@ def fasta_file_to_dict(fasta_file, id=True, header=False, seq=False):
     * Added support for url escaped id
     """
     fasta_file_f = fasta_file
-    if isinstance(fasta_file, str):
-        fasta_file_f = open(fasta_file, 'rb')
+    if _is_path(fasta_file):
+        fasta_file_f = _open_text(fasta_file, 'r')
 
     fasta_dict = OrderedDict()
     keys = ['id', 'header', 'seq']
@@ -84,13 +88,13 @@ def fasta_file_to_dict(fasta_file, id=True, header=False, seq=False):
             key = '||'.join([entry[i] for i in keys if flags[i]])
             if key: # key != ''
                 if key in fasta_dict: # check for duplicate key
-                    logger.warning('%s : Line %d : Duplicate %s [%s] : ID = [%s].', fasta_file_f.name, line_num, '||'.join([i for i in keys if flags[i]]), key[:25] + (key[25:] and '..'), entry['id'])
+                    logger.warning('%s : Line %d : Duplicate %s [%s] : ID = [%s].', getattr(fasta_file_f, 'name', '<stream>'), line_num, '||'.join([i for i in keys if flags[i]]), key[:25] + (key[25:] and '..'), entry['id'])
                 entry['seq'] = ''.join(entry['seq'])
                 fasta_dict[key] = entry
                 # check for url escaped id
                 if id:
                     unescaped_id = unquote(entry['id'])
-                    if id != unescaped_id:
+                    if entry['id'] != unescaped_id:
                         key = '||'.join([unescaped_id] + [entry[i] for i in keys if i != 'id' and flags[i]])
                         entry['unescaped_id'] = unescaped_id
                         fasta_dict[key] = entry
@@ -98,23 +102,23 @@ def fasta_file_to_dict(fasta_file, id=True, header=False, seq=False):
             entry['header'] = line
             entry['id'] = line.split()[0][1:]
             entry['seq'] = []
-        else:
+        elif line:
             entry['seq'].append(line.upper())
         line_num += 1
 
-    if isinstance(fasta_file, str):
+    if _is_path(fasta_file):
         fasta_file_f.close()
 
     key = '||'.join([entry[i] for i in keys if flags[i]])
     if key: # key != ''
         if key in fasta_dict:
-            logger.warning('%s : Line %d : Duplicate %s [%s] : ID = [%s].', fasta_file_f.name, line_num, '||'.join([i for i in keys if flags[i]]), key[:25] + (key[25:] and '..'), entry['id'])
+            logger.warning('%s : Line %d : Duplicate %s [%s] : ID = [%s].', getattr(fasta_file_f, 'name', '<stream>'), line_num, '||'.join([i for i in keys if flags[i]]), key[:25] + (key[25:] and '..'), entry['id'])
         entry['seq'] = ''.join(entry['seq'])
         fasta_dict[key] = entry
         # check for url escaped id
         if id:
             unescaped_id = unquote(entry['id'])
-            if id != unescaped_id:
+            if entry['id'] != unescaped_id:
                 key = '||'.join([unescaped_id] + [entry[i] for i in keys if i != 'id' and flags[i]])
                 entry['unescaped_id'] = unescaped_id
                 fasta_dict[key] = entry
@@ -130,14 +134,22 @@ def fasta_dict_to_file(fasta_dict, fasta_file, line_char_limit=None):
     :return: None
     """
     fasta_fp = fasta_file
-    if isinstance(fasta_file, str):
-        fasta_fp = open(fasta_file, 'wb')
+    if _is_path(fasta_file):
+        fasta_fp = _open_text(fasta_file, 'w')
 
+    written = set()
     for key in fasta_dict:
+        # fasta_file_to_dict stores sequences with a URL escaped id under both ids, write them once
+        if id(fasta_dict[key]) in written:
+            continue
+        written.add(id(fasta_dict[key]))
         seq = fasta_dict[key]['seq']
         if line_char_limit:
             seq = '\n'.join([seq[i:i+line_char_limit] for i in range(0, len(seq), line_char_limit)])
         fasta_fp.write(u'{0:s}\n{1:s}\n'.format(fasta_dict[key]['header'], seq))
+
+    if _is_path(fasta_file):
+        fasta_fp.close()
 
 
 class Gff3(object):
@@ -207,10 +219,13 @@ class Gff3(object):
         :return:
         """
         for line in self.lines:
+            if not _has_int_coordinates(line):
+                # parse() has already reported the invalid coordinates
+                continue
             for parent_feature in line['parents']:
                 ok = False
                 for parent_line in parent_feature:
-                    if parent_line['start'] <= line['start'] and line['end'] <= parent_line['end']:
+                    if not _has_int_coordinates(parent_line) or parent_line['start'] <= line['start'] and line['end'] <= parent_line['end']:
                         ok = True
                         break
                 if not ok:
@@ -226,20 +241,23 @@ class Gff3(object):
         3. calculate and validate phase
         """
         plus_minus = set(['+', '-'])
-        for k, g in groupby(sorted([line for line in self.lines if  line['line_type'] == 'feature' and line['type'] == 'CDS' and 'Parent' in line['attributes']], key=lambda x: x['attributes']['Parent']), key=lambda x: x['attributes']['Parent']):
+        for k, g in groupby(sorted([line for line in self.lines if  line['line_type'] == 'feature' and line['type'] == 'CDS' and 'Parent' in line.get('attributes', {})], key=lambda x: x['attributes']['Parent']), key=lambda x: x['attributes']['Parent']):
             cds_list = list(g)
             strand_set = list(set([line['strand'] for line in cds_list]))
             if len(strand_set) != 1:
                 for line in cds_list:
-                    self.add_line_error(line, {'message': 'Inconsistent CDS strand with parent: {0:s}'.format(k), 'error_type': 'STRAND'})
+                    self.add_line_error(line, {'message': 'Inconsistent CDS strand with parent: {0:s}'.format(','.join(k)), 'error_type': 'STRAND'})
                 continue
             if len(cds_list) == 1:
                 if cds_list[0]['phase'] != 0:
-                    self.add_line_error(cds_list[0], {'message': 'Wrong phase {0:d}, should be {1:d}'.format(cds_list[0]['phase'], 0), 'error_type': 'PHASE'})
+                    self.add_line_error(cds_list[0], {'message': 'Wrong phase {0}, should be {1:d}'.format(cds_list[0]['phase'], 0), 'error_type': 'PHASE'})
                 continue
             strand = strand_set[0]
             if strand not in plus_minus:
                 # don't process unknown strands
+                continue
+            if not all(_has_int_coordinates(line) for line in cds_list):
+                # can't calculate phases without valid coordinates, parse() has already reported them
                 continue
             if strand == '-':
                 # sort end descending
@@ -249,7 +267,7 @@ class Gff3(object):
             phase = 0
             for line in sorted_cds_list:
                 if line['phase'] != phase:
-                    self.add_line_error(line, {'message': 'Wrong phase {0:d}, should be {1:d}'.format(line['phase'], phase), 'error_type': 'PHASE'})
+                    self.add_line_error(line, {'message': 'Wrong phase {0}, should be {1:d}'.format(line['phase'], phase), 'error_type': 'PHASE'})
                 phase = (3 - ((line['end'] - line['start'] + 1 - phase) % 3)) % 3
 
     def parse_fasta_external(self, fasta_file):
@@ -296,7 +314,7 @@ class Gff3(object):
             check_all_sources = False
         # get a list of line_data with valid start and end coordinates and unescape the seqid
         start_end_error_locations = set(('start', 'end', 'start,end'))
-        valid_line_data_seqid = [(line_data, unquote(line_data['seqid'])) for line_data in self.lines if line_data['line_type'] == 'feature' and line_data['seqid'] != '.' and (not line_data['line_errors'] or not [error_info for error_info in line_data['line_errors'] if 'location' in error_info and error_info['location'] in start_end_error_locations])]
+        valid_line_data_seqid = [(line_data, unquote(line_data['seqid'])) for line_data in self.lines if line_data['line_type'] == 'feature' and line_data['seqid'] != '.' and _has_int_coordinates(line_data) and (not line_data['line_errors'] or not [error_info for error_info in line_data['line_errors'] if 'location' in error_info and error_info['location'] in start_end_error_locations])]
         checked_at_least_one_source = False
         # check directive
         # don't use any directives with errors
@@ -305,11 +323,12 @@ class Gff3(object):
         if (check_all_sources or sequence_region) and valid_sequence_regions:
             checked_at_least_one_source = True
             for line_data, seqid in valid_line_data_seqid:
-                if seqid not in valid_sequence_regions and seqid not in unresolved_seqid:
-                    unresolved_seqid.add(seqid)
-                    error_lines.add(line_data['line_index'])
-                    self.add_line_error(line_data, {'message': u'Seqid not found in any ##sequence-region: {0:s}'.format(
-                        seqid), 'error_type': 'BOUNDS', 'location': 'sequence_region'})
+                if seqid not in valid_sequence_regions:
+                    if seqid not in unresolved_seqid:
+                        unresolved_seqid.add(seqid)
+                        error_lines.add(line_data['line_index'])
+                        self.add_line_error(line_data, {'message': u'Seqid not found in any ##sequence-region: {0:s}'.format(
+                            seqid), 'error_type': 'BOUNDS', 'location': 'sequence_region'})
                     continue
                 if line_data['start'] < valid_sequence_regions[seqid]['start']:
                     error_lines.add(line_data['line_index'])
@@ -324,10 +343,11 @@ class Gff3(object):
         if (check_all_sources or fasta_embedded) and self.fasta_embedded:
             checked_at_least_one_source = True
             for line_data, seqid in valid_line_data_seqid:
-                if seqid not in self.fasta_embedded and seqid not in unresolved_seqid:
-                    unresolved_seqid.add(seqid)
-                    error_lines.add(line_data['line_index'])
-                    self.add_line_error(line_data, {'message': 'Seqid not found in the embedded ##FASTA: %s' % seqid, 'error_type': 'BOUNDS', 'location': 'fasta_embedded'})
+                if seqid not in self.fasta_embedded:
+                    if seqid not in unresolved_seqid:
+                        unresolved_seqid.add(seqid)
+                        error_lines.add(line_data['line_index'])
+                        self.add_line_error(line_data, {'message': 'Seqid not found in the embedded ##FASTA: %s' % seqid, 'error_type': 'BOUNDS', 'location': 'fasta_embedded'})
                     continue
                 # check bounds
                 if line_data['end'] > len(self.fasta_embedded[seqid]['seq']):
@@ -357,10 +377,11 @@ class Gff3(object):
         if (check_all_sources or fasta_external) and self.fasta_external:
             checked_at_least_one_source = True
             for line_data, seqid in valid_line_data_seqid:
-                if seqid not in self.fasta_external and seqid not in unresolved_seqid:
-                    unresolved_seqid.add(seqid)
-                    error_lines.add(line_data['line_index'])
-                    self.add_line_error(line_data, {'message': 'Seqid not found in the external FASTA file: %s' % seqid, 'error_type': 'BOUNDS', 'location': 'fasta_external'})
+                if seqid not in self.fasta_external:
+                    if seqid not in unresolved_seqid:
+                        unresolved_seqid.add(seqid)
+                        error_lines.add(line_data['line_index'])
+                        self.add_line_error(line_data, {'message': 'Seqid not found in the external FASTA file: %s' % seqid, 'error_type': 'BOUNDS', 'location': 'fasta_external'})
                     continue
                 # check bounds
                 if line_data['end'] > len(self.fasta_external[seqid]['seq']):
@@ -455,8 +476,8 @@ class Gff3(object):
         unescaped_field = re.compile(r'[\x00-\x1f\x7f]|%(?![0-9a-fA-F]{2})').search
 
         gff_fp = gff_file
-        if isinstance(gff_file, str):
-            gff_fp = open(gff_file, 'r')
+        if _is_path(gff_file):
+            gff_fp = _open_text(gff_file, 'r')
 
         lines = []
         current_line_num = 1 # line numbers start at 1
@@ -483,6 +504,9 @@ class Gff3(object):
                 self.add_line_error(line_data, {'message': '"##gff-version" missing from the first line', 'error_type': 'FORMAT', 'location': ''})
             if len(line_strip) == 0:
                 line_data['line_type'] = 'blank'
+                # keep blank lines so that line_index and the reported line numbers match the file
+                current_line_num += 1
+                lines.append(line_data)
                 continue
             if line_strip.startswith('##'):
                 line_data['line_type'] = 'directive'
@@ -709,13 +733,14 @@ class Gff3(object):
 
                                 if tag == 'Parent':
                                     for feature_id in line_data['attributes']['Parent']:
-                                        try:
+                                        # features is a defaultdict, so check membership instead of catching KeyError
+                                        if feature_id in features:
                                             line_data['parents'].append(features[feature_id])
                                             for ld in features[feature_id]:
                                                 # no need to check if line_data in ld['children'], because it is impossible, each ld maps to only one feature_id, so the ld we get are all different
                                                 ld['children'].append(line_data)
-                                        except KeyError: # features[id]
-                                            self.add_line_error(line_data, {'message': '%s attribute has unresolved forward reference: %s' % (tag, feature_id), 'error_type': 'FORMAT', 'location': ''})
+                                        else:
+                                            # forward reference, resolved after the whole file has been read
                                             unresolved_parents[feature_id].append(line_data)
                             elif tag == 'Target':
                                 if value.find(',') >= 0:
@@ -760,8 +785,8 @@ class Gff3(object):
                                 elif tag[:1].isupper() and tag not in reserved_attributes: # {'ID', 'Name', 'Alias', 'Parent', 'Target', 'Gap', 'Derives_from', 'Note', 'Dbxref', 'Ontology_term', 'Is_circular'}
                                     self.add_line_error(line_data, {'message': 'Unknown reserved (uppercase) attribute: "%s"' % tag, 'error_type': 'FORMAT', 'location': ''})
                                 elif tag == 'ID':
-                                    # check for duplicate ID in non-adjacent lines
-                                    if value in features and lines[-1]['attributes'][tag] != value:
+                                    # check for duplicate ID in non-adjacent lines, blank lines in between are ignored
+                                    if value in features and next((ld for ld in reversed(lines) if ld['line_type'] != 'blank'), {}).get('attributes', {}).get(tag) != value:
                                         self.add_line_error(line_data, {'message': 'Duplicate ID: "%s" in non-adjacent lines: %s' % (value, ','.join([str(f['line_index'] + 1) for f in features[value]])), 'error_type': 'FORMAT', 'location': ''}, log_level=logging.WARNING)
                                     features[value].append(line_data)
                 except IndexError:
@@ -769,17 +794,24 @@ class Gff3(object):
             current_line_num += 1
             lines.append(line_data)
 
-        if isinstance(gff_file, str):
+        if _is_path(gff_file):
             gff_fp.close()
 
         # global look up of unresolved parents
         for feature_id in unresolved_parents:
             if feature_id in features:
+                # forward references are allowed, link them now that the parent is known
                 for line in unresolved_parents[feature_id]:
-                    self.add_line_error(line, {'message': 'Unresolved forward reference: "%s", found defined in lines: %s' % (feature_id, ','.join([str(ld['line_index'] + 1) for ld in features[feature_id]])), 'error_type': 'FORMAT', 'location': ''})
+                    line['parents'].append(features[feature_id])
+                    for ld in features[feature_id]:
+                        ld['children'].append(line)
+            else:
+                for line in unresolved_parents[feature_id]:
+                    self.add_line_error(line, {'message': 'Parent attribute has unresolved forward reference: %s' % feature_id, 'error_type': 'FORMAT', 'location': ''})
 
         self.lines = lines
         self.features = features
+        self.unresolved_parents = dict((feature_id, unresolved_parents[feature_id]) for feature_id in unresolved_parents if feature_id not in features)
         return 1
 
     def descendants(self, line_data):
@@ -839,7 +871,6 @@ class Gff3(object):
             except TypeError: # assume feature_id(str)
                 old_id = old_parent
         old_feature = self.features[old_id]
-        old_indexes = [ld['line_index'] for ld in old_feature]
         try: # assume line_data(dict)
             new_id = new_parent['attributes']['ID']
         except TypeError:
@@ -848,7 +879,6 @@ class Gff3(object):
             except TypeError: # assume feature_id(str)
                 new_id = new_parent
         new_feature = self.features[new_id]
-        new_indexes = [ld['line_index'] for ld in new_feature]
         # build a list of children to be moved
         # add the child to the new parent's children list if its not already there
         # update the child's parent list and parent attribute
@@ -895,7 +925,7 @@ class Gff3(object):
         :param root_type:
         :return:
         """
-        roots = [ld for ld in self.ancestors(line_data) if (root_type and ld['line_type'] == root_type) or (not root_type and not ld['parents'])] or [line_data]
+        roots = [ld for ld in self.ancestors(line_data) if (root_type and ld['type'] == root_type) or (not root_type and not ld['parents'])] or [line_data]
         for root in roots:
             root['line_status'] = 'removed'
             root_descendants = self.descendants(root)
@@ -913,8 +943,8 @@ class Gff3(object):
 
     def write(self, gff_file, embed_fasta=None, fasta_char_limit=None):
         gff_fp = gff_file
-        if isinstance(gff_file, str):
-            gff_fp = open(gff_file, 'wb')
+        if _is_path(gff_file):
+            gff_fp = _open_text(gff_file, 'w')
 
         wrote_sequence_region = set()
         # build sequence region data
@@ -926,7 +956,10 @@ class Gff3(object):
             for seqid in self.fasta_embedded:
                 sequence_regions[seqid] = (1, len(self.fasta_embedded[seqid]['seq']))
         else:
-            pass
+            # no FASTA to compute them from, keep the valid ##sequence-region directives that were parsed
+            for line_data in self.lines:
+                if line_data['directive'] == '##sequence-region' and not line_data['line_errors']:
+                    sequence_regions.setdefault(line_data['seqid'], (line_data['start'], line_data['end']))
 
         wrote_lines = set()
         field_keys = ['seqid', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase']
@@ -935,20 +968,30 @@ class Gff3(object):
         def write_feature(line_data):
             if line_data['line_status'] == 'removed':
                 return
+            if 'attributes' not in line_data:
+                # the line could not be split into 9 fields, write it unchanged
+                gff_fp.write(line_data['line_raw'].rstrip('\n') + '\n')
+                wrote_lines.add(line_data['line_index'])
+                return
             field_list = [str(line_data[k]) for k in field_keys]
             attribute_list = []
             for k, v in sorted(line_data['attributes'].items(), key=lambda x: attributes_sort_map[x[0]], reverse=True):
                 if isinstance(v, list):
                     v = ','.join(v)
+                elif k == 'Target' and isinstance(v, dict):
+                    # parse() splits Target into a dict, join it back into "target_id start end [strand]"
+                    v = ' '.join([str(v[t]) for t in ('target_id', 'start', 'end', 'strand') if t in v])
                 attribute_list.append('%s=%s' % (str(k), str(v)))
-            field_list.append(';'.join(attribute_list))
+            # a feature without attributes has '.' in column 9
+            field_list.append(';'.join(attribute_list) or '.')
             gff_fp.write('\t'.join(field_list) + '\n')
             wrote_lines.add(line_data['line_index'])
         # write directives
         ignore_directives = ['##sequence-region', '###', '##FASTA']
         directives_lines = [line_data for line_data in self.lines if line_data['line_type'] == 'directive' and line_data['directive'] not in ignore_directives]
         for directives_line in directives_lines:
-            gff_fp.write(directives_line['line_raw'])
+            # the last line of a file may not end with a newline
+            gff_fp.write(directives_line['line_raw'].rstrip('\n') + '\n')
 
         # write features
         # get a list of root nodes
@@ -983,7 +1026,7 @@ class Gff3(object):
             gff_fp.write('##FASTA\n')
             fasta_dict_to_file(fasta, gff_fp, line_char_limit=fasta_char_limit)
 
-        if isinstance(gff_file, str):
+        if _is_path(gff_file):
             gff_fp.close()
 
     def sequence(self, line_data, child_type=None, reference=None):
@@ -1010,9 +1053,14 @@ class Gff3(object):
         except TypeError:
             line_index = self.lines[line_data]['line_index']
         ld = self.lines[line_index]
-        if ld['type'] != 'feature':
+        if ld['line_type'] != 'feature':
             return None
-        seq = reference[ld['seqid']][ld['start']-1:ld['end']]
+        reference_seq = reference[ld['seqid']]['seq']
+        if child_type:
+            children = sorted([child for child in ld['children'] if child['type'] == child_type], key=lambda x: x['start'])
+            seq = ''.join([reference_seq[child['start']-1:child['end']] for child in children])
+        else:
+            seq = reference_seq[ld['start']-1:ld['end']]
         if ld['strand'] == '-':
             seq = complement(seq[::-1])
         return seq
@@ -1047,265 +1095,3 @@ class Gff3(object):
                     else:
                         node_dict[parent_type].children.add(node_dict[child_type])
         return sorted(list(root_set), key=lambda x: x.value)
-
-try:
-    from collections import OrderedDict
-except ImportError:
-    # Backport of OrderedDict() class that runs on Python 2.4, 2.5, 2.6, 2.7 and pypy.
-    # Passes Python2.7's test suite and incorporates all the latest updates.
-
-    try:
-        from thread import get_ident as _get_ident
-    except ImportError:
-        from dummy_thread import get_ident as _get_ident
-
-    try:
-        from _abcoll import KeysView, ValuesView, ItemsView
-    except ImportError:
-        pass
-
-
-    class OrderedDict(dict):
-        'Dictionary that remembers insertion order'
-        # An inherited dict maps keys to values.
-        # The inherited dict provides __getitem__, __len__, __contains__, and get.
-        # The remaining methods are order-aware.
-        # Big-O running times for all methods are the same as for regular dictionaries.
-
-        # The internal self.__map dictionary maps keys to links in a doubly linked list.
-        # The circular doubly linked list starts and ends with a sentinel element.
-        # The sentinel element never gets deleted (this simplifies the algorithm).
-        # Each link is stored as a list of length three:  [PREV, NEXT, KEY].
-
-        def __init__(self, *args, **kwds):
-            '''Initialize an ordered dictionary.  Signature is the same as for
-            regular dictionaries, but keyword arguments are not recommended
-            because their insertion order is arbitrary.
-
-            '''
-            if len(args) > 1:
-                raise TypeError('expected at most 1 arguments, got %d' % len(args))
-            try:
-                self.__root
-            except AttributeError:
-                self.__root = root = []                     # sentinel node
-                root[:] = [root, root, None]
-                self.__map = {}
-            self.__update(*args, **kwds)
-
-        def __setitem__(self, key, value, dict_setitem=dict.__setitem__):
-            'od.__setitem__(i, y) <==> od[i]=y'
-            # Setting a new item creates a new link which goes at the end of the linked
-            # list, and the inherited dictionary is updated with the new key/value pair.
-            if key not in self:
-                root = self.__root
-                last = root[0]
-                last[1] = root[0] = self.__map[key] = [last, root, key]
-            dict_setitem(self, key, value)
-
-        def __delitem__(self, key, dict_delitem=dict.__delitem__):
-            'od.__delitem__(y) <==> del od[y]'
-            # Deleting an existing item uses self.__map to find the link which is
-            # then removed by updating the links in the predecessor and successor nodes.
-            dict_delitem(self, key)
-            link_prev, link_next, key = self.__map.pop(key)
-            link_prev[1] = link_next
-            link_next[0] = link_prev
-
-        def __iter__(self):
-            'od.__iter__() <==> iter(od)'
-            root = self.__root
-            curr = root[1]
-            while curr is not root:
-                yield curr[2]
-                curr = curr[1]
-
-        def __reversed__(self):
-            'od.__reversed__() <==> reversed(od)'
-            root = self.__root
-            curr = root[0]
-            while curr is not root:
-                yield curr[2]
-                curr = curr[0]
-
-        def clear(self):
-            'od.clear() -> None.  Remove all items from od.'
-            try:
-                for node in self.__map.itervalues():
-                    del node[:]
-                root = self.__root
-                root[:] = [root, root, None]
-                self.__map.clear()
-            except AttributeError:
-                pass
-            dict.clear(self)
-
-        def popitem(self, last=True):
-            '''od.popitem() -> (k, v), return and remove a (key, value) pair.
-            Pairs are returned in LIFO order if last is true or FIFO order if false.
-
-            '''
-            if not self:
-                raise KeyError('dictionary is empty')
-            root = self.__root
-            if last:
-                link = root[0]
-                link_prev = link[0]
-                link_prev[1] = root
-                root[0] = link_prev
-            else:
-                link = root[1]
-                link_next = link[1]
-                root[1] = link_next
-                link_next[0] = root
-            key = link[2]
-            del self.__map[key]
-            value = dict.pop(self, key)
-            return key, value
-
-        # -- the following methods do not depend on the internal structure --
-
-        def keys(self):
-            'od.keys() -> list of keys in od'
-            return list(self)
-
-        def values(self):
-            'od.values() -> list of values in od'
-            return [self[key] for key in self]
-
-        def items(self):
-            'od.items() -> list of (key, value) pairs in od'
-            return [(key, self[key]) for key in self]
-
-        def iterkeys(self):
-            'od.iterkeys() -> an iterator over the keys in od'
-            return iter(self)
-
-        def itervalues(self):
-            'od.itervalues -> an iterator over the values in od'
-            for k in self:
-                yield self[k]
-
-        def iteritems(self):
-            'od.iteritems -> an iterator over the (key, value) items in od'
-            for k in self:
-                yield (k, self[k])
-
-        def update(*args, **kwds):
-            '''od.update(E, **F) -> None.  Update od from dict/iterable E and F.
-
-            If E is a dict instance, does:           for k in E: od[k] = E[k]
-            If E has a .keys() method, does:         for k in E.keys(): od[k] = E[k]
-            Or if E is an iterable of items, does:   for k, v in E: od[k] = v
-            In either case, this is followed by:     for k, v in F.items(): od[k] = v
-
-            '''
-            if len(args) > 2:
-                raise TypeError('update() takes at most 2 positional '
-                                'arguments (%d given)' % (len(args),))
-            elif not args:
-                raise TypeError('update() takes at least 1 argument (0 given)')
-            self = args[0]
-            # Make progressively weaker assumptions about "other"
-            other = ()
-            if len(args) == 2:
-                other = args[1]
-            if isinstance(other, dict):
-                for key in other:
-                    self[key] = other[key]
-            elif hasattr(other, 'keys'):
-                for key in other.keys():
-                    self[key] = other[key]
-            else:
-                for key, value in other:
-                    self[key] = value
-            for key, value in kwds.items():
-                self[key] = value
-
-        __update = update  # let subclasses override update without breaking __init__
-
-        __marker = object()
-
-        def pop(self, key, default=__marker):
-            '''od.pop(k[,d]) -> v, remove specified key and return the corresponding value.
-            If key is not found, d is returned if given, otherwise KeyError is raised.
-
-            '''
-            if key in self:
-                result = self[key]
-                del self[key]
-                return result
-            if default is self.__marker:
-                raise KeyError(key)
-            return default
-
-        def setdefault(self, key, default=None):
-            'od.setdefault(k[,d]) -> od.get(k,d), also set od[k]=d if k not in od'
-            if key in self:
-                return self[key]
-            self[key] = default
-            return default
-
-        def __repr__(self, _repr_running={}):
-            'od.__repr__() <==> repr(od)'
-            call_key = id(self), _get_ident()
-            if call_key in _repr_running:
-                return '...'
-            _repr_running[call_key] = 1
-            try:
-                if not self:
-                    return '%s()' % (self.__class__.__name__,)
-                return '%s(%r)' % (self.__class__.__name__, self.items())
-            finally:
-                del _repr_running[call_key]
-
-        def __reduce__(self):
-            'Return state information for pickling'
-            items = [[k, self[k]] for k in self]
-            inst_dict = vars(self).copy()
-            for k in vars(OrderedDict()):
-                inst_dict.pop(k, None)
-            if inst_dict:
-                return (self.__class__, (items,), inst_dict)
-            return self.__class__, (items,)
-
-        def copy(self):
-            'od.copy() -> a shallow copy of od'
-            return self.__class__(self)
-
-        @classmethod
-        def fromkeys(cls, iterable, value=None):
-            '''OD.fromkeys(S[, v]) -> New ordered dictionary with keys from S
-            and values equal to v (which defaults to None).
-
-            '''
-            d = cls()
-            for key in iterable:
-                d[key] = value
-            return d
-
-        def __eq__(self, other):
-            '''od.__eq__(y) <==> od==y.  Comparison to another OD is order-sensitive
-            while comparison to a regular mapping is order-insensitive.
-
-            '''
-            if isinstance(other, OrderedDict):
-                return len(self)==len(other) and self.items() == other.items()
-            return dict.__eq__(self, other)
-
-        def __ne__(self, other):
-            return not self == other
-
-        # -- the following methods are only used in Python 2.7 --
-
-        def viewkeys(self):
-            "od.viewkeys() -> a set-like object providing a view on od's keys"
-            return KeysView(self)
-
-        def viewvalues(self):
-            "od.viewvalues() -> an object providing a view on od's values"
-            return ValuesView(self)
-
-        def viewitems(self):
-            "od.viewitems() -> a set-like object providing a view on od's items"
-            return ItemsView(self)

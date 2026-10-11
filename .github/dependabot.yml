@@ -1,0 +1,23 @@
+version: 2
+updates:
+  # One grouped pull request per ecosystem per month
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # pyproject.toml, and the Sphinx pin used by Read the Docs
+  - package-ecosystem: pip
+    directories:
+      - /
+      - /docs
+    schedule:
+      interval: monthly
+    groups:
+      python-packages:
+        patterns:
+          - "*"
