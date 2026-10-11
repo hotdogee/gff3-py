@@ -36,6 +36,10 @@ def _open_text(path, mode):
     """
     return open(path, mode, encoding='utf-8', errors='surrogateescape', newline='\n' if 'w' in mode else None)
 
+def _has_int_coordinates(line_data):
+    # start and end are left as strings when they are not valid integers, e.g. '.'
+    return isinstance(line_data.get('start'), int) and isinstance(line_data.get('end'), int)
+
 COMPLEMENT_TRANS = str.maketrans('TAGCtagc', 'ATCGATCG')
 def complement(seq):
     return seq.translate(COMPLEMENT_TRANS)
@@ -215,10 +219,13 @@ class Gff3(object):
         :return:
         """
         for line in self.lines:
+            if not _has_int_coordinates(line):
+                # parse() has already reported the invalid coordinates
+                continue
             for parent_feature in line['parents']:
                 ok = False
                 for parent_line in parent_feature:
-                    if parent_line['start'] <= line['start'] and line['end'] <= parent_line['end']:
+                    if not _has_int_coordinates(parent_line) or parent_line['start'] <= line['start'] and line['end'] <= parent_line['end']:
                         ok = True
                         break
                 if not ok:
@@ -239,15 +246,18 @@ class Gff3(object):
             strand_set = list(set([line['strand'] for line in cds_list]))
             if len(strand_set) != 1:
                 for line in cds_list:
-                    self.add_line_error(line, {'message': 'Inconsistent CDS strand with parent: {0:s}'.format(k), 'error_type': 'STRAND'})
+                    self.add_line_error(line, {'message': 'Inconsistent CDS strand with parent: {0:s}'.format(','.join(k)), 'error_type': 'STRAND'})
                 continue
             if len(cds_list) == 1:
                 if cds_list[0]['phase'] != 0:
-                    self.add_line_error(cds_list[0], {'message': 'Wrong phase {0:d}, should be {1:d}'.format(cds_list[0]['phase'], 0), 'error_type': 'PHASE'})
+                    self.add_line_error(cds_list[0], {'message': 'Wrong phase {0}, should be {1:d}'.format(cds_list[0]['phase'], 0), 'error_type': 'PHASE'})
                 continue
             strand = strand_set[0]
             if strand not in plus_minus:
                 # don't process unknown strands
+                continue
+            if not all(_has_int_coordinates(line) for line in cds_list):
+                # can't calculate phases without valid coordinates, parse() has already reported them
                 continue
             if strand == '-':
                 # sort end descending
@@ -257,7 +267,7 @@ class Gff3(object):
             phase = 0
             for line in sorted_cds_list:
                 if line['phase'] != phase:
-                    self.add_line_error(line, {'message': 'Wrong phase {0:d}, should be {1:d}'.format(line['phase'], phase), 'error_type': 'PHASE'})
+                    self.add_line_error(line, {'message': 'Wrong phase {0}, should be {1:d}'.format(line['phase'], phase), 'error_type': 'PHASE'})
                 phase = (3 - ((line['end'] - line['start'] + 1 - phase) % 3)) % 3
 
     def parse_fasta_external(self, fasta_file):
@@ -304,7 +314,7 @@ class Gff3(object):
             check_all_sources = False
         # get a list of line_data with valid start and end coordinates and unescape the seqid
         start_end_error_locations = set(('start', 'end', 'start,end'))
-        valid_line_data_seqid = [(line_data, unquote(line_data['seqid'])) for line_data in self.lines if line_data['line_type'] == 'feature' and line_data['seqid'] != '.' and (not line_data['line_errors'] or not [error_info for error_info in line_data['line_errors'] if 'location' in error_info and error_info['location'] in start_end_error_locations])]
+        valid_line_data_seqid = [(line_data, unquote(line_data['seqid'])) for line_data in self.lines if line_data['line_type'] == 'feature' and line_data['seqid'] != '.' and _has_int_coordinates(line_data) and (not line_data['line_errors'] or not [error_info for error_info in line_data['line_errors'] if 'location' in error_info and error_info['location'] in start_end_error_locations])]
         checked_at_least_one_source = False
         # check directive
         # don't use any directives with errors
