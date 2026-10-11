@@ -10,8 +10,11 @@ updates:
         patterns:
           - "*"
 
+  # pyproject.toml, and the Sphinx pin used by Read the Docs
   - package-ecosystem: pip
-    directory: /
+    directories:
+      - /
+      - /docs
     schedule:
       interval: monthly
     groups:
