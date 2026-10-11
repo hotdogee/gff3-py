@@ -10,7 +10,11 @@ Tests for `gff3` module.
 
 import io
 
-from gff3 import Gff3
+import pytest
+
+from gff3.gff3 import complement, translate
+
+from .conftest import CTG1_SEQ
 
 
 def ids(line_datas):
@@ -166,3 +170,43 @@ def test_checks_skip_features_without_integer_coordinates(parse_text):
     gff.check_parent_boundary()
     gff.check_phase()
     assert [errors(ld) for ld in gff.lines] == [[], [], [], [], [], ['Start is not a valid integer: "x"']]
+
+
+# Sequences
+
+def test_complement_and_translate():
+    assert complement('ATGCatgcN') == 'TACGTACGN'
+    assert translate('ATGGCC TAA\n') == 'MA*'
+    # incomplete and unknown codons are skipped
+    assert translate('ATGNNNGC') == 'M'
+
+
+def test_sequence_of_a_feature(sample):
+    gene = sample.features['gene1'][0]
+    assert sample.sequence(gene) == CTG1_SEQ
+    # a line_index works too
+    assert sample.sequence(gene['line_index']) == CTG1_SEQ
+    # minus strand features are reverse complemented
+    match = sample.features['match1'][0]
+    assert sample.sequence(match) == complement(CTG1_SEQ[1:30][::-1])
+    # non-feature lines have no sequence
+    assert sample.sequence(0) is None
+
+
+def test_sequence_of_children(sample):
+    mrna = sample.features['mRNA1'][0]
+    assert sample.sequence(mrna, child_type='exon') == CTG1_SEQ[0:20] + CTG1_SEQ[30:60]
+    cds = sample.sequence(mrna, child_type='CDS')
+    assert cds == CTG1_SEQ[4:20] + CTG1_SEQ[30:39]
+    assert translate(cds) == 'RTLASTRI'
+
+
+def test_sequence_uses_the_given_reference(sample):
+    reference = {'ctg1': {'id': 'ctg1', 'header': '>ctg1', 'seq': 'T' * 60}}
+    assert sample.sequence(sample.features['gene1'][0], reference=reference) == 'T' * 60
+
+
+def test_sequence_requires_a_reference(parse_text):
+    gff = parse_text('##gff-version 3\nctg1\t.\tgene\t1\t10\t.\t+\t.\tID=g1\n')
+    with pytest.raises(Exception, match='fasta reference needed'):
+        gff.sequence(1)

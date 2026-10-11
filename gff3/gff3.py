@@ -1042,9 +1042,14 @@ class Gff3(object):
         except TypeError:
             line_index = self.lines[line_data]['line_index']
         ld = self.lines[line_index]
-        if ld['type'] != 'feature':
+        if ld['line_type'] != 'feature':
             return None
-        seq = reference[ld['seqid']][ld['start']-1:ld['end']]
+        reference_seq = reference[ld['seqid']]['seq']
+        if child_type:
+            children = sorted([child for child in ld['children'] if child['type'] == child_type], key=lambda x: x['start'])
+            seq = ''.join([reference_seq[child['start']-1:child['end']] for child in children])
+        else:
+            seq = reference_seq[ld['start']-1:ld['end']]
         if ld['strand'] == '-':
             seq = complement(seq[::-1])
         return seq
